@@ -35,6 +35,7 @@ FOR EACH CSAMS NO-LOCK:
                               "0", 
                               CSAMS.SALES-REP-ID,
                               "*",
+                              0,
                               opcMessage, 
                               opcAppToken, 
                               opiStatusCode, 
