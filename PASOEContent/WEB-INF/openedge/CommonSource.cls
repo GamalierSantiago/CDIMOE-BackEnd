@@ -49,7 +49,8 @@ CLASS CommonSource:
     FIELD recentOrderDate     AS CHARACTER
     FIELD onHoldCustomer      AS LOGICAL
     FIELD poRequired          AS LOGICAL
-    FIELD number_of_days      AS INTEGER.  
+    FIELD number_of_days      AS INTEGER
+    FIELD pageNumber          AS INTEGER.  
           
   DEFINE PRIVATE VARIABLE cError AS CHARACTER NO-UNDO.
   

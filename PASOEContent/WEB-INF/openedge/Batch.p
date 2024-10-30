@@ -29,12 +29,13 @@ DEFINE VARIABLE oplcSalespersonData AS LONGCHAR NO-UNDO.
 
 ObjWrapper = NEW WrapperClass().
 
-FOR EACH CSAMS WHERE csams.sales-rep-id BEGINS "I" NO-LOCK:
+FOR EACH CSAMS NO-LOCK:
     
     objwrapper:fetchCustomers("BATCH",
                               "0", 
                               CSAMS.SALES-REP-ID,
                               "*",
+                              0,
                               opcMessage, 
                               opcAppToken, 
                               opiStatusCode, 
