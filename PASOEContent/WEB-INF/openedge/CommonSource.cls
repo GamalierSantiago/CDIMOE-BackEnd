@@ -161,7 +161,7 @@ CLASS CommonSource:
   -----------------------------------------------------------------------------------------------*/
   METHOD PUBLIC VOID customerSearch(INPUT  ipcSearchKey  AS CHARACTER,
                                     INPUT  ipcCompanyID  AS CHARACTER,
-                                    INPUT  ipcSalesRepId AS CHARACTER,
+                                    /*INPUT  ipcSalesRepId AS CHARACTER,*/
                                     INPUT  ipcLangID     AS CHARACTER,
                                     OUTPUT opcError      AS CHARACTER,
                                     OUTPUT TABLE ttCustomer,
@@ -171,13 +171,22 @@ CLASS CommonSource:
                                     OUTPUT TABLE ttCustShippingAddress,
                                     OUTPUT TABLE ttCustBillingAddress,
                                     OUTPUT opiStatusCode AS INTEGER):
+                                        
+  MESSAGE "customerSearch " SKIP
+              "ipcLangID " ipcLangID SKIP
+              "ipcSearchKey " ipcSearchKey SKIP
+      VIEW-AS ALERT-BOX.                                      
   
     DEFINE VARIABLE objFillCustomerData AS CLASS SalesmanCustomersData NO-UNDO.
     objFillCustomerData = NEW SalesmanCustomersData(INPUT cToken).
     
     FOR FIRST CCSMS NO-LOCK
-      WHERE CCSMS.CUST-NAME    EQ ipcSearchKey
-        AND CCSMS.SALES-REP-ID EQ ipcSalesRepId:
+      WHERE CCSMS.CUST-NUMBER EQ TRIM(ipcSearchKey)
+        /*AND CCSMS.SALES-REP-ID EQ ipcSalesRepId*/:
+    MESSAGE "customerSearch" SKIP 
+    "CCSMS.CUST-NAME " CCSMS.CUST-NAME
+    VIEW-AS ALERT-BOX.        
+            
             
       objFillCustomerData:fillCustomersData(INPUT  CCSMS.CUST-NUMBER,
                                             INPUT  ipcCompanyID,

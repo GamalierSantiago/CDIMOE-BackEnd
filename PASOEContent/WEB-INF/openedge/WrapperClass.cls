@@ -4860,6 +4860,7 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
                                                 OUTPUT opcAppToken         AS CHARACTER,
                                                 OUTPUT opiStatusCode       AS INTEGER,
                                                 OUTPUT TABLE TTCustomerSuggestionList):
+                                                                                                  
                                                     
       DEFINE VARIABLE cCompanyCode      AS           CHARACTER             NO-UNDO.
       DEFINE VARIABLE objCustomer       AS CLASS     SalesmanCustomersData NO-UNDO.
@@ -5012,10 +5013,275 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
         
     END.
   END. 
-  END.   
-      
+  END.        
 END METHOD.
     
+
+/*------------------------------------------------------------------------------------
+ Purpose: This method is used to search for a selected client in a list of suggestions.
+  
+ Input Parameters: 1.ipcToken      - User-token,
+                   2.ipcLangID     - language-id,
+                   3.
+                   
+ Output Parameters:1.opcError                 - Errors if any,
+                   2.opcMessage               - messages contains user related information,
+                   3.opcAppToken              - it contains new token if old token expired 
+                                                otherwise return old token,
+                   4.
+ Notes: 
+---------------------------------------------------------------------------------------*/
+
+@openapi.openedge.export(type="REST", useReturnValue="false", writeDataSetBeforeImage="false").
+METHOD PUBLIC VOID freeFormCustomerSearchWrapper(INPUT ipcToken             AS CHARACTER,
+                                                 INPUT ipcLangID            AS CHARACTER,
+                                                 INPUT ipcSearchKey         AS CHARACTER,
+                                                 INPUT ipcSalesRepId        AS CHARACTER,
+                                                 OUTPUT opcMessage          AS CHARACTER,
+                                                 OUTPUT opcAppToken         AS CHARACTER,
+                                                 OUTPUT opiStatusCode       AS INTEGER,
+                                                 OUTPUT oplcSalespersonData AS LONGCHAR):
+      MESSAGE "freeFormCustomerSearchWrapper " SKIP
+              "ipcToken " ipcToken SKIP 
+              "ipcLangID " ipcLangID SKIP
+              "ipcSearchKey " ipcSearchKey SKIP
+              "ipcSalesRepId " ipcSalesRepId SKIP
+      VIEW-AS ALERT-BOX.
+      
+     EMPTY TEMP-TABLE ttCustomer.
+     EMPTY TEMP-TABLE ttOpenOrder.
+     EMPTY TEMP-TABLE ttCustAmountOverdue.
+     EMPTY TEMP-TABLE ttCustInvoicePaging.
+     EMPTY TEMP-TABLE ttCustShippingAddress.
+     EMPTY TEMP-TABLE ttCustBillingAddress.                                                                                            
+                                                    
+      DEFINE VARIABLE cCompanyCode      AS           CHARACTER             NO-UNDO.
+      DEFINE VARIABLE objCustomer       AS CLASS     SalesmanCustomersData NO-UNDO.
+      DEFINE VARIABLE objTokenMgmt      AS CLASS     TokenManagement       NO-UNDO.
+      DEFINE VARIABLE objCommonSrc      AS CLASS     CommonSource          NO-UNDO.
+      DEFINE VARIABLE opcStatus         AS CHARACTER                       NO-UNDO.
+      DEFINE VARIABLE salesDataJsonObj  AS CLASS     JsonObject            NO-UNDO.
+      DEFINE VARIABLE customerJsonObj   AS CLASS     JsonObject            NO-UNDO.
+      DEFINE VARIABLE customerJsonArray AS CLASS     JsonArray             NO-UNDO.
+      DEFINE VARIABLE blankJsonArray    AS CLASS     JsonArray             NO-UNDO.
+      DEFINE VARIABLE iarrayIndex       AS INTEGER   NO-UNDO.
+      DEFINE VARIABLE lCheck            AS LOGICAL   NO-UNDO.
+      
+                                                    
+      FOR FIRST Token WHERE Token.Token = ipcToken NO-LOCK:
+      IF CAN-FIND(FIRST CMPNY WHERE CMPNY.COMPANY-CODE = Token.Company-ID NO-LOCK) THEN
+        ASSIGN cCompanyCode = Token.Company-ID.            
+      END. /* FOR FIRST Token..*/  
+      
+      ASSIGN 
+            objCustomer       = NEW SalesmanCustomersData(INPUT ipcToken)
+            objTokenMgmt      = NEW TokenManagement(INPUT ipcToken)
+            objCommonSrc      = NEW CommonSource(INPUT ipcToken)
+            salesDataJsonObj  = NEW JsonObject()
+            customerJsonObj   = NEW JsonObject()
+            customerJsonArray = NEW JsonArray()
+            blankJsonArray    = NEW JsonArray().
+                                                   
+      IF TRIM(ipcLangID) EQ "":U OR TRIM(ipcLangID) EQ ? THEN
+      DO:
+        /* Get multilingual message for blank language id */
+        objCommonSrc:getMessages(INPUT  ipcLangID,
+                                 INPUT  ConstantInitializer:c200LangBlank,                                                              
+                                 OUTPUT cError,
+                                 OUTPUT opiStatusCode).
+            
+        IF cError NE "":U THEN 
+          UNDO,THROW NEW AppError(cError,1).
+      END. /* IF TRIM(ipcLangID) EQ "":U OR.. */ 
+      ELSE
+      DO: 
+       IF NOT CAN-FIND(CDILANGUAGE WHERE CDILANGUAGE.language-id EQ TRIM(ipcLangID) NO-LOCK) THEN
+        DO:
+          /* Get multilingual message for language not supported */
+          objCommonSrc:getMessages(INPUT  ipcLangID,
+                                   INPUT  ConstantInitializer:c200InvalidLang,                                                              
+                                   OUTPUT cError,
+                                   OUTPUT opiStatusCode).
+                                      
+          IF cError NE "":U THEN 
+            UNDO,THROW NEW AppError(cError,1).
+        END. /* IF NOT CAN-FIND(CDILANGUAGE WHERE.. */        
+      END. /* ELSE */    
+      
+      /*Validate the token of the user on every request*/
+  IF TRIM(ipcToken) EQ "":U OR TRIM(ipcToken) EQ ? THEN
+  DO:
+    objCommonSrc:getMessages(INPUT  ipcLangID,
+                             INPUT  ConstantInitializer:c403InvalidToken,                                                              
+                             OUTPUT cError,
+                             OUTPUT opiStatusCode).
+        
+    IF cError NE "":U THEN 
+      UNDO,THROW NEW AppError(cError,1).
+  END. /* IF TRIM(ipcToken) EQ "":U OR.. */ 
+  
+  IF TRIM(ipcSalesRepId) EQ "":U OR TRIM(ipcSalesRepId) EQ ? THEN
+  DO:
+    /* Get multilingual message for blank user */
+    objCommonSrc:getMessages(INPUT  ipcLangID,
+                             INPUT  ConstantInitializer:c200UserBlank,                                                              
+                             OUTPUT cError,
+                             OUTPUT opiStatusCode).
+        
+    IF cError NE "":U THEN 
+      UNDO,THROW NEW AppError(cError,1).
+  END. /* IF TRIM(ipcSalesRepId) EQ "":U OR.. */
+  
+  ELSE
+  DO:
+    FIND CSAMS WHERE CSAMS.sales-rep-id EQ ipcSalesRepId  NO-LOCK NO-ERROR.
+    IF NOT AVAILABLE CSAMS THEN
+    DO:
+      /* Get multilingual message for invalid user */
+      objCommonSrc:getMessages(INPUT  ipcLangID,
+                               INPUT  ConstantInitializer:c200InvalidUser,                                                              
+                               OUTPUT cError,
+                               OUTPUT opiStatusCode).
+        
+      IF cError NE "":U THEN 
+        UNDO,THROW NEW AppError(cError,1).
+    END. /* IF NOT AVAILABLE CSAMS.. */ 
+  END.
+  
+  objTokenMgmt:loggedInUserTokenRenew(INPUT  ipcToken,
+                                      INPUT  ipcSalesRepId,
+                                      INPUT  ipcLangID, 
+                                      OUTPUT opcMessage,
+                                      OUTPUT opcStatus,
+                                      OUTPUT opcAppToken,
+                                      OUTPUT opiStatusCode). 
+                                                                                      
+  IF opcMessage NE "":U THEN
+    UNDO,THROW NEW AppError(opcMessage,1).
+    
+  
+  /* Checking if status is success */                                          
+  IF opcStatus EQ "Success":U THEN
+  DO:
+      MESSAGE "opcStatus " opcStatus
+      VIEW-AS ALERT-BOX.
+     objCommonSrc:customerSearch(INPUT  ipcSearchKey,
+                                 INPUT  cCompanyCode,
+                                 /*INPUT  ipcSalesRepId AS CHARACTER,*/
+                                 INPUT  ipcLangID,
+                                 OUTPUT cError,
+                                 OUTPUT TABLE ttCustomer,
+                                 OUTPUT TABLE ttOpenOrder,
+                                 OUTPUT TABLE ttCustInvoice,
+                                 OUTPUT TABLE ttCustAmountOverdue,
+                                 OUTPUT TABLE ttCustShippingAddress,
+                                 OUTPUT TABLE ttCustBillingAddress,
+                                 OUTPUT opiStatusCode). 
+      
+     salesDataJsonObj:READ(DATASET opdsSalespersonData:HANDLE).
+        
+    IF salesDataJsonObj:Has(INPUT "customers":U) THEN
+    DO:    
+      ASSIGN 
+        customerJsonArray = salesDataJsonObj:GetJsonArray("customers":U) NO-ERROR.
+             
+      DO iarrayIndex = 1 TO customerJsonArray:LENGTH:
+        ASSIGN 
+          customerJsonObj = customerJsonArray:GetJsonObject(INPUT iarrayIndex).
+          
+        IF NOT customerJsonObj:Has( INPUT "customer_shipping_addresses":U) THEN
+        DO:
+          ASSIGN 
+            lCheck = TRUE. 
+          customerJsonObj:add("customer_shipping_addresses":U,INPUT blankJsonArray). 
+        END. /* IF NOT customerJsonObj:Has( INPUT "customer_shipping.. */
+           
+        IF NOT customerJsonObj:Has( INPUT "customer_billing_address":U) THEN
+        DO:
+          ASSIGN 
+            lCheck = TRUE. 
+          customerJsonObj:add("customer_billing_address":U,INPUT blankJsonArray). 
+        END. /* IF NOT customerJsonObj:Has( INPUT "customer_billing.. */
+                             
+        IF NOT customerJsonObj:Has( INPUT "open_orders":U) THEN
+        DO:
+          ASSIGN 
+            lCheck = TRUE. 
+          customerJsonObj:add("open_orders":U,INPUT blankJsonArray). 
+        END. /*  IF NOT customerJsonObj:Has( INPUT "open_orders.. */
+          
+        IF NOT customerJsonObj:Has( INPUT "customer_overdues":U) THEN
+        DO:
+          ASSIGN 
+            lCheck = TRUE. 
+          customerJsonObj:add("customer_overdues":U,INPUT blankJsonArray). 
+        END. /*  IF NOT customerJsonObj:Has( INPUT "customer_overdues.. */
+          
+        IF NOT customerJsonObj:Has( INPUT "customer_invoices":U) THEN
+        DO:
+          ASSIGN 
+            lCheck = TRUE. 
+          customerJsonObj:add("customer_invoices":U,INPUT blankJsonArray). 
+        END. /* IF NOT customerJsonObj:Has( INPUT "customer_invoices.. */
+           
+        IF lCheck THEN 
+          customerJsonArray:Set( INPUT iarrayIndex, INPUT customerJsonObj).
+          
+        ASSIGN 
+          lCheck = FALSE.      
+      END. /*  DO iarrayIndex = 1 TO customerJsonArray:Length.. */
+          
+      salesDataJsonObj:Set(INPUT "customers":U,INPUT customerJsonArray) NO-ERROR.
+      ASSIGN 
+        oplcSalespersonData = salesDataJsonObj:GetJsonText().
+        
+    END.  /* IF salesDataJsonObj:Has(INPUT "customers") THEN..*/    
+    ELSE
+    DO:
+       MESSAGE "Entro al ELSE"
+       VIEW-AS ALERT-BOX.
+      objCommonSrc:getMessages(INPUT  ipcLangID,
+                               INPUT  ConstantInitializer:c200InvalidCustomer,                                                              
+                               OUTPUT cError,
+                               OUTPUT opiStatusCode).
+      
+      IF cError NE "":U THEN 
+        UNDO,THROW NEW AppError(cError,1). 
+             
+    END. //ELSE
+      
+  END. //IF opcStatus 
+  
+  CATCH errorObj AS AppError:
+      MESSAGE "Entro a catch"
+      VIEW-AS ALERT-BOX.           
+    ASSIGN 
+      opcMessage = errorObj:GetMessage(1).  
+  END CATCH.
+    
+  FINALLY:
+    IF VALID-OBJECT(objCustomer)       THEN    
+      DELETE OBJECT objCustomer.
+    IF VALID-OBJECT(objCommonSrc)      THEN  
+      DELETE OBJECT objCommonSrc.
+    IF VALID-OBJECT(objTokenMgmt)      THEN
+      DELETE OBJECT objTokenMgmt. 
+    IF VALID-OBJECT(salesDataJsonObj)  THEN
+      DELETE OBJECT salesDataJsonObj.  
+    IF VALID-OBJECT(customerJsonObj)   THEN
+      DELETE OBJECT customerJsonObj.
+    IF VALID-OBJECT(customerJsonArray) THEN
+      DELETE OBJECT customerJsonArray.
+    IF VALID-OBJECT(blankJsonArray)    THEN
+      DELETE OBJECT blankJsonArray.              
+    
+    IF VALID-HANDLE(hSharedVar)        THEN 
+      DELETE PROCEDURE hSharedVar NO-ERROR.
+    
+  END FINALLY.
+
+END METHOD.
+
     
 /*------------------------------------------------------------------------------------
  Purpose: This method is used to expose API to fetch data of all the customers
