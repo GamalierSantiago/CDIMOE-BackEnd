@@ -191,12 +191,7 @@ CLASS SalesmanCustomersData:
                                        OUTPUT TABLE ttCustAmountOverdue,
                                        OUTPUT TABLE ttCustBillingAddress,
                                        OUTPUT cError        AS CHARACTER,
-                                       OUTPUT opiStatusCode AS INTEGER):
-                                           
-    MESSAGE "cCustNumber " cCustNumber SKIP
-            "ipcCompanyID " ipcCompanyID SKIP
-            "ipcLangID " ipcLangID SKIP 
-    VIEW-AS ALERT-BOX.                                       
+                                       OUTPUT opiStatusCode AS INTEGER):                                                             
 	     
     DEFINE VARIABLE deTotalAmtOverdue AS DECIMAL   NO-UNDO.
     DEFINE VARIABLE deAvailCredit     AS DECIMAL   NO-UNDO.

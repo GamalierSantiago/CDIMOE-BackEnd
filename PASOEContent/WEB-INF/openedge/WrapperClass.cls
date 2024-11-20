@@ -265,7 +265,13 @@ CLASS WrapperClass:
     FIELD check_in_time  LIKE LocationMgmt.CheckInTime
     FIELD check_out_time LIKE LocationMgmt.CheckoutTime
     FIELD longitude      LIKE LocationMgmt.Longitude
-    FIELD latitude       LIKE LocationMgmt.Latitude.  
+    FIELD latitude       LIKE LocationMgmt.Latitude. 
+    
+  DEFINE PRIVATE TEMP-TABLE TTCustomerSuggestionList NO-UNDO SERIALIZE-NAME "customers":U
+        FIELD CustomerNumber      AS CHARACTER 
+        FIELD CustomerName        AS CHARACTER 
+        FIELD CustomerPhoneNumber AS CHARACTER
+        FIELD CustomerEmail       AS CHARACTER.   
     
   DEFINE PRIVATE DATASET ipdsCheckoutData SERIALIZE-HIDDEN FOR ttCheckoutCustomer,ttCheckoutProducts,ttPayment                                                                                                                                
     DATA-RELATION drCustCheckoutProducts  FOR ttCheckoutCustomer, ttCheckoutProducts 
@@ -287,7 +293,11 @@ CLASS WrapperClass:
     DATA-RELATION drCustBillingAdd   FOR ttCustomerPaging, ttCustBillingAddressPaging   RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN
     DATA-RELATION drCustOpenOrder    FOR ttCustomerPaging, ttOpenOrderPaging            RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN
     DATA-RELATION drCustAmtOverdue   FOR ttCustomerPaging, ttCustAmountOverduePaging    RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN
-    DATA-RELATION drCustInvoices     FOR ttCustomerPaging, ttCustInvoicePaging          RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN.  
+    DATA-RELATION drCustInvoices     FOR ttCustomerPaging, ttCustInvoicePaging          RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN.
+    
+  DEFINE PRIVATE DATASET opdsSuggestionListClientData SERIALIZE-HIDDEN FOR  TTCustomerSuggestionList,  ttCustShippingAddress
+  
+    DATA-RELATION drCustShippingAdd FOR TTCustomerSuggestionList, ttCustShippingAddress RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN.
   
   DEFINE TEMP-TABLE online_account_info NO-UNDO 
          FIELDS provider_name    AS CHARACTER 
@@ -4826,11 +4836,11 @@ METHOD PUBLIC VOID logout(INPUT  ipcToken      AS CHARACTER,
                           
 END METHOD. 
 
-DEFINE PRIVATE TEMP-TABLE TTCustomerSuggestionList NO-UNDO
-    FIELD CustomerNumber      AS CHARACTER 
-    FIELD CustomerName        AS CHARACTER 
-    FIELD CustomerPhoneNumber AS CHARACTER
-    FIELD CustomerEmail       AS CHARACTER.
+/*DEFINE PRIVATE TEMP-TABLE TTCustomerSuggestionList NO-UNDO*/
+/*    FIELD CustomerNumber      AS CHARACTER                */
+/*    FIELD CustomerName        AS CHARACTER                */
+/*    FIELD CustomerPhoneNumber AS CHARACTER                */
+/*    FIELD CustomerEmail       AS CHARACTER.               */
     
 
 
@@ -4859,7 +4869,7 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
                                                 OUTPUT opcMessage          AS CHARACTER,
                                                 OUTPUT opcAppToken         AS CHARACTER,
                                                 OUTPUT opiStatusCode       AS INTEGER,
-                                                OUTPUT TABLE TTCustomerSuggestionList):
+                                                OUTPUT oplcSuggestionListData AS LONGCHAR):
                                                                                                   
                                                     
       DEFINE VARIABLE cCompanyCode      AS           CHARACTER             NO-UNDO.
@@ -4867,7 +4877,16 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
       DEFINE VARIABLE objTokenMgmt      AS CLASS     TokenManagement       NO-UNDO.
       DEFINE VARIABLE objCommonSrc      AS CLASS     CommonSource          NO-UNDO.
       DEFINE VARIABLE opcStatus         AS CHARACTER                       NO-UNDO.
+      DEFINE VARIABLE suggestionListDataJsonObj  AS CLASS     JsonObject            NO-UNDO.
+      DEFINE VARIABLE customerJsonObj   AS CLASS     JsonObject            NO-UNDO.
+      DEFINE VARIABLE customerJsonArray AS CLASS     JsonArray             NO-UNDO.
+      DEFINE VARIABLE blankJsonArray    AS CLASS     JsonArray             NO-UNDO.
+      DEFINE VARIABLE iarrayIndex       AS INTEGER   NO-UNDO.
+      DEFINE VARIABLE lCheck            AS LOGICAL   NO-UNDO.
+      DEFINE VARIABLE opcError          AS CHARACTER NO-UNDO.
       
+      EMPTY TEMP-TABLE ttCustShippingAddress.
+      EMPTY TEMP-TABLE TTCustomerSuggestionList.                                                                                       
                                                     
       FOR FIRST Token WHERE Token.Token = ipcToken NO-LOCK:
       IF CAN-FIND(FIRST CMPNY WHERE CMPNY.COMPANY-CODE = Token.Company-ID NO-LOCK) THEN
@@ -4877,7 +4896,11 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
       ASSIGN 
         objCustomer       = NEW SalesmanCustomersData(INPUT ipcToken)
         objTokenMgmt      = NEW TokenManagement(INPUT ipcToken)
-        objCommonSrc      = NEW CommonSource(INPUT ipcToken).
+        objCommonSrc      = NEW CommonSource(INPUT ipcToken)
+        suggestionListDataJsonObj  = NEW JsonObject()
+        customerJsonObj   = NEW JsonObject()
+        customerJsonArray = NEW JsonArray()
+        blankJsonArray    = NEW JsonArray().
                                                    
       IF TRIM(ipcLangID) EQ "":U OR TRIM(ipcLangID) EQ ? THEN
       DO:
@@ -5013,7 +5036,75 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
         
     END.
   END. 
-  END.        
+  
+  FOR EACH TTCustomerSuggestionList NO-LOCK :
+   objCustomer:getCustShippingAddress(INPUT  TTCustomerSuggestionList.CustomerNumber,
+                                    INPUT "",
+                                    OUTPUT opcError,
+                                    OUTPUT TABLE ttCustShippingAddress).
+ END. // FOR EACH TTCustomerSuggestionList
+  
+  suggestionListDataJsonObj:READ(DATASET opdsSuggestionListClientData:HANDLE).
+  
+  IF suggestionListDataJsonObj:Has(INPUT "customers":U) THEN
+    DO:
+        ASSIGN 
+        customerJsonArray = suggestionListDataJsonObj:GetJsonArray("customers":U) NO-ERROR.
+             
+      DO iarrayIndex = 1 TO customerJsonArray:LENGTH:
+        ASSIGN 
+          customerJsonObj = customerJsonArray:GetJsonObject(INPUT iarrayIndex).
+          
+        IF NOT customerJsonObj:Has( INPUT "customer_shipping_addresses":U) THEN
+        DO:
+          ASSIGN 
+            lCheck = TRUE. 
+          customerJsonObj:add("customer_shipping_addresses":U,INPUT blankJsonArray). 
+        END. /* IF NOT customerJsonObj:Has( INPUT "customer_shipping.. */
+        
+       suggestionListDataJsonObj:Set(INPUT "customers":U,INPUT customerJsonArray) NO-ERROR.
+        ASSIGN 
+        oplcSuggestionListData = suggestionListDataJsonObj:GetJsonText().  
+            
+    END. // IF suggestionListDataJsonObj
+    END.
+    ELSE DO:
+            objCommonSrc:getMessages(INPUT  ipcLangID,
+                                    INPUT  ConstantInitializer:c200InvalidCustomer,                                                              
+                                    OUTPUT cError,
+                                    OUTPUT opiStatusCode).
+      
+      IF cError NE "":U THEN 
+        UNDO,THROW NEW AppError(cError,1).        
+     END.  //  ELSE
+ END.  //IF opcStatus EQ "Success"    
+ 
+ CATCH errorObj AS AppError:       
+    ASSIGN 
+      opcMessage = errorObj:GetMessage(1).  
+  END CATCH.
+    
+  FINALLY:
+        IF VALID-OBJECT(objCustomer)       THEN    
+          DELETE OBJECT objCustomer.
+        IF VALID-OBJECT(objCommonSrc)      THEN  
+          DELETE OBJECT objCommonSrc.
+        IF VALID-OBJECT(objTokenMgmt)      THEN
+          DELETE OBJECT objTokenMgmt. 
+        IF VALID-OBJECT(suggestionListDataJsonObj)  THEN
+          DELETE OBJECT suggestionListDataJsonObj.  
+        IF VALID-OBJECT(customerJsonObj)   THEN
+          DELETE OBJECT customerJsonObj.
+        IF VALID-OBJECT(customerJsonArray) THEN
+          DELETE OBJECT customerJsonArray.
+        IF VALID-OBJECT(blankJsonArray)    THEN
+          DELETE OBJECT blankJsonArray.              
+        
+        IF VALID-HANDLE(hSharedVar)        THEN 
+          DELETE PROCEDURE hSharedVar NO-ERROR.
+    
+  END FINALLY. 
+     
 END METHOD.
     
 
@@ -5041,12 +5132,6 @@ METHOD PUBLIC VOID freeFormCustomerSearchWrapper(INPUT ipcToken             AS C
                                                  OUTPUT opcAppToken         AS CHARACTER,
                                                  OUTPUT opiStatusCode       AS INTEGER,
                                                  OUTPUT oplcSalespersonData AS LONGCHAR):
-      MESSAGE "freeFormCustomerSearchWrapper " SKIP
-              "ipcToken " ipcToken SKIP 
-              "ipcLangID " ipcLangID SKIP
-              "ipcSearchKey " ipcSearchKey SKIP
-              "ipcSalesRepId " ipcSalesRepId SKIP
-      VIEW-AS ALERT-BOX.
       
      EMPTY TEMP-TABLE ttCustomer.
      EMPTY TEMP-TABLE ttOpenOrder.
@@ -5163,20 +5248,18 @@ METHOD PUBLIC VOID freeFormCustomerSearchWrapper(INPUT ipcToken             AS C
   /* Checking if status is success */                                          
   IF opcStatus EQ "Success":U THEN
   DO:
-      MESSAGE "opcStatus " opcStatus
-      VIEW-AS ALERT-BOX.
-     objCommonSrc:customerSearch(INPUT  ipcSearchKey,
-                                 INPUT  cCompanyCode,
-                                 /*INPUT  ipcSalesRepId AS CHARACTER,*/
-                                 INPUT  ipcLangID,
-                                 OUTPUT cError,
-                                 OUTPUT TABLE ttCustomer,
-                                 OUTPUT TABLE ttOpenOrder,
-                                 OUTPUT TABLE ttCustInvoice,
-                                 OUTPUT TABLE ttCustAmountOverdue,
-                                 OUTPUT TABLE ttCustShippingAddress,
-                                 OUTPUT TABLE ttCustBillingAddress,
-                                 OUTPUT opiStatusCode). 
+         objCommonSrc:customerSearch(INPUT  ipcSearchKey,
+                                                                     INPUT  cCompanyCode,
+                                                                     /*INPUT  ipcSalesRepId AS CHARACTER,*/
+                                                                     INPUT  ipcLangID,
+                                                                     OUTPUT cError,
+                                                                     OUTPUT TABLE ttCustomer,
+                                                                     OUTPUT TABLE ttOpenOrder,
+                                                                     OUTPUT TABLE ttCustInvoice,
+                                                                     OUTPUT TABLE ttCustAmountOverdue,
+                                                                     OUTPUT TABLE ttCustShippingAddress,
+                                                                     OUTPUT TABLE ttCustBillingAddress,
+                                                                     OUTPUT opiStatusCode). 
       
      salesDataJsonObj:READ(DATASET opdsSalespersonData:HANDLE).
         
@@ -5238,12 +5321,10 @@ METHOD PUBLIC VOID freeFormCustomerSearchWrapper(INPUT ipcToken             AS C
     END.  /* IF salesDataJsonObj:Has(INPUT "customers") THEN..*/    
     ELSE
     DO:
-       MESSAGE "Entro al ELSE"
-       VIEW-AS ALERT-BOX.
-      objCommonSrc:getMessages(INPUT  ipcLangID,
-                               INPUT  ConstantInitializer:c200InvalidCustomer,                                                              
-                               OUTPUT cError,
-                               OUTPUT opiStatusCode).
+          objCommonSrc:getMessages(INPUT  ipcLangID,
+                                                                INPUT  ConstantInitializer:c200InvalidCustomer,                                                              
+                                                                OUTPUT cError,
+                                                                OUTPUT opiStatusCode).
       
       IF cError NE "":U THEN 
         UNDO,THROW NEW AppError(cError,1). 
@@ -5252,9 +5333,7 @@ METHOD PUBLIC VOID freeFormCustomerSearchWrapper(INPUT ipcToken             AS C
       
   END. //IF opcStatus 
   
-  CATCH errorObj AS AppError:
-      MESSAGE "Entro a catch"
-      VIEW-AS ALERT-BOX.           
+  CATCH errorObj AS AppError:       
     ASSIGN 
       opcMessage = errorObj:GetMessage(1).  
   END CATCH.
