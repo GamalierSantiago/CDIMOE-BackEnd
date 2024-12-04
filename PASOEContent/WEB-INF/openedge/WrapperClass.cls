@@ -271,7 +271,21 @@ CLASS WrapperClass:
         FIELD CustomerNumber      AS CHARACTER 
         FIELD CustomerName        AS CHARACTER 
         FIELD CustomerPhoneNumber AS CHARACTER
-        FIELD CustomerEmail       AS CHARACTER.   
+        FIELD CustomerEmail       AS CHARACTER.
+        
+  DEFINE PRIVATE TEMP-TABLE ttCustShippingAddressSuggestion NO-UNDO SERIALIZE-NAME "customer_shipping_addressesSuggestion":U
+    FIELD customerNumber AS CHARACTER SERIALIZE-HIDDEN
+    FIELD primaryAddress AS LOGICAL
+    FIELD ship_number    LIKE SHPTO.SHIP-NUMBER
+    FIELD addressL1      LIKE SHPTO.ADDRESS-L1
+    FIELD addressL2      LIKE SHPTO.ADDRESS-L2 
+    FIELD addressL3      LIKE SHPTO.ADDRESS-L3
+    FIELD shipName       LIKE SHPTO.CUST-NAME
+    FIELD shippingCity   LIKE CCSMS.PHYSICAL-CITY
+    FIELD shippingState  LIKE CCSMS.PHYSICAL-STATE
+    FIELD shippingZip    LIKE CCSMS.PHYSICAL-ZIP
+    FIELD longitude      LIKE SHPTO.longitude
+    FIELD latitude       LIKE SHPTO.latitude.   
     
   DEFINE PRIVATE DATASET ipdsCheckoutData SERIALIZE-HIDDEN FOR ttCheckoutCustomer,ttCheckoutProducts,ttPayment                                                                                                                                
     DATA-RELATION drCustCheckoutProducts  FOR ttCheckoutCustomer, ttCheckoutProducts 
@@ -295,9 +309,9 @@ CLASS WrapperClass:
     DATA-RELATION drCustAmtOverdue   FOR ttCustomerPaging, ttCustAmountOverduePaging    RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN
     DATA-RELATION drCustInvoices     FOR ttCustomerPaging, ttCustInvoicePaging          RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN.
     
-  DEFINE PRIVATE DATASET opdsSuggestionListClientData SERIALIZE-HIDDEN FOR  TTCustomerSuggestionList,  ttCustShippingAddress
+  DEFINE PRIVATE DATASET opdsSuggestionListClientData SERIALIZE-HIDDEN FOR  TTCustomerSuggestionList,  ttCustShippingAddressSuggestion
   
-    DATA-RELATION drCustShippingAdd FOR TTCustomerSuggestionList, ttCustShippingAddress RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN.
+    DATA-RELATION drCustShippingAdd FOR TTCustomerSuggestionList, ttCustShippingAddressSuggestion RELATION-FIELDS (customerNumber,customerNumber) NESTED FOREIGN-KEY-HIDDEN.
   
   DEFINE TEMP-TABLE online_account_info NO-UNDO 
          FIELDS provider_name    AS CHARACTER 
@@ -4885,7 +4899,7 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
       DEFINE VARIABLE lCheck            AS LOGICAL   NO-UNDO.
       DEFINE VARIABLE opcError          AS CHARACTER NO-UNDO.
       
-      EMPTY TEMP-TABLE ttCustShippingAddress.
+      EMPTY TEMP-TABLE ttCustShippingAddressSuggestion.
       EMPTY TEMP-TABLE TTCustomerSuggestionList.                                                                                       
                                                     
       FOR FIRST Token WHERE Token.Token = ipcToken NO-LOCK:
@@ -5041,7 +5055,7 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
    objCustomer:getCustShippingAddress(INPUT  TTCustomerSuggestionList.CustomerNumber,
                                     INPUT "",
                                     OUTPUT opcError,
-                                    OUTPUT TABLE ttCustShippingAddress).
+                                    OUTPUT TABLE ttCustShippingAddressSuggestion).
  END. // FOR EACH TTCustomerSuggestionList
   
   suggestionListDataJsonObj:READ(DATASET opdsSuggestionListClientData:HANDLE).
@@ -5055,11 +5069,11 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
         ASSIGN 
           customerJsonObj = customerJsonArray:GetJsonObject(INPUT iarrayIndex).
           
-        IF NOT customerJsonObj:Has( INPUT "customer_shipping_addresses":U) THEN
+        IF NOT customerJsonObj:Has( INPUT "customer_shipping_addressesSuggestion":U) THEN
         DO:
           ASSIGN 
             lCheck = TRUE. 
-          customerJsonObj:add("customer_shipping_addresses":U,INPUT blankJsonArray). 
+          customerJsonObj:add("customer_shipping_addressesSuggestion":U,INPUT blankJsonArray). 
         END. /* IF NOT customerJsonObj:Has( INPUT "customer_shipping.. */
         
        suggestionListDataJsonObj:Set(INPUT "customers":U,INPUT customerJsonArray) NO-ERROR.
