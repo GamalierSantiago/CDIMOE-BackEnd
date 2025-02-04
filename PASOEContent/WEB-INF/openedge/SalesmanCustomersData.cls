@@ -1193,10 +1193,6 @@ CLASS SalesmanCustomersData:
      //Gama le anadio and SHIP-TO = "" ?                                                                            
      IF AVAILABLE CCSMS AND ipcShipTo = ? OR ipcShipTo = "" THEN
       DO: 
-          /*MESSAGE "Entro? getCustShippingAddress"
-          VIEW-AS ALERT-BOX.  */
-            /* When CCSMS has shipping address it will be considered as primary one. */
-         
             CREATE ttCustShippingAddress.
             ASSIGN ttCustShippingAddress.customerNumber = ipcCustNum
                    ttCustShippingAddress.ship_number    = "PRIMARY":U
