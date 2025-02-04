@@ -764,6 +764,7 @@ CLASS SalesmanCustomersData:
     DEFINE VARIABLE iNoOfDays       AS INTEGER                        NO-UNDO.
     DEFINE VARIABLE opcLastXDays    AS CHARACTER                      NO-UNDO.
     DEFINE VARIABLE iTermsDays      AS INTEGER                        NO-UNDO.
+    DEFINE VARIABLE iOverDays      AS INTEGER                        NO-UNDO.
     DEFINE VARIABLE lcSalesRep      AS CHARACTER                      NO-UNDO.
     DEFINE VARIABLE objCommonSrc    AS CLASS commonSource             NO-UNDO.
     DEFINE VARIABLE iGraceDays      AS INTEGER                        NO-UNDO.
@@ -793,7 +794,7 @@ CLASS SalesmanCustomersData:
         //Gama modifico para llamar al paramfl y en base a eso se condicione o no el For each.
         
         DEFINE VARIABLE willShowAllCustomers AS LOGICAL NO-UNDO.
-    FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID BEGINS "OE-SALES-OPERATOR" AND PARAMFL.PARAM-STATUS NO-LOCK NO-ERROR.
+    FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "OE-SALES-OPERATOR-2" AND PARAMFL.PARAM-STATUS NO-LOCK NO-ERROR.
     willShowAllCustomers = AVAIL PARAMFL.
         
         FOR FIRST CCSMS WHERE CCSMS.CUST-NUMBER EQ ipcCustNum NO-LOCK:
@@ -827,9 +828,20 @@ CLASS SalesmanCustomersData:
                                     AND PARAMFL.PARAM-ID     EQ "OVERRIDE-TERMS":U 
                                     AND PARAMFL.PARAM-STATUS = YES NO-LOCK NO-ERROR.
                IF AVAILABLE PARAMFL THEN
-                  ASSIGN iGraceDays = INTEGER (PARAMFL.PARAM-VALUE1) NO-ERROR. 
+                  ASSIGN iGraceDays = INTEGER (PARAMFL.PARAM-VALUE1) NO-ERROR.
                
-                IF (COPAR.CUS-INV-DATE + iTermsDays + iGraceDays) LT TODAY THEN    
+               FIND  PARAMFL WHERE PARAMFL.COMPANY-CODE EQ ipcCompanyID
+                               AND PARAMFL.PARAM-ID     EQ "ARINQRY":U 
+                               AND PARAMFL.PARAM-STATUS = YES NO-LOCK NO-ERROR.
+               IF AVAILABLE PARAMFL THEN 
+                DO: 
+                ASSIGN iOverDays = INTEGER (PARAMFL.PARAM-VALUE1). 
+               END.
+               ELSE DO: 
+                ASSIGN iOverDays = 30. 
+               END.                
+               
+                IF (COPAR.CUS-INV-DATE + iOverDays + iGraceDays) LT TODAY THEN    
                 DO:
                     ASSIGN deAmountDue = COPAR.CUS-INV-NET  - 
                                          COPAR.CUS-PAYMENT  - 
@@ -906,14 +918,25 @@ CLASS SalesmanCustomersData:
                                     AND PARAMFL.PARAM-ID     EQ "OVERRIDE-TERMS":U 
                                     AND PARAMFL.PARAM-STATUS = YES NO-LOCK NO-ERROR.
                IF AVAILABLE PARAMFL THEN
-                  ASSIGN iGraceDays = INTEGER (PARAMFL.PARAM-VALUE1) NO-ERROR. 
+                  ASSIGN iGraceDays = INTEGER (PARAMFL.PARAM-VALUE1) NO-ERROR.
+                  
+               FIND  PARAMFL WHERE PARAMFL.COMPANY-CODE EQ ipcCompanyID
+                               AND PARAMFL.PARAM-ID     EQ "ARINQRY":U 
+                               AND PARAMFL.PARAM-STATUS = YES NO-LOCK NO-ERROR.
+               IF AVAILABLE PARAMFL THEN 
+                DO: 
+                ASSIGN iOverDays = INTEGER (PARAMFL.PARAM-VALUE1). 
+               END.
+               ELSE DO: 
+                ASSIGN iOverDays = 30. 
+               END. 
                   
                /* IF (iDays GT 0 AND iDays LE iNoOfDays)          OR 
                    (iDays LT 0 AND COPAR.CUS-INV-DATE GT TODAY) OR
                    (iDays LE 0 AND COPAR.CUS-INV-DATE LE TODAY) OR
                    (COPAR.CUS-CHG-NO  EQ ConstantInitializer:cOnAcc)THEN */
                    
-                IF (COPAR.CUS-INV-DATE + iTermsDays + iGraceDays) LT TODAY THEN      
+                IF (COPAR.CUS-INV-DATE + iOverDays + iGraceDays) LT TODAY THEN      
                 DO:
                     ASSIGN deAmountDue = COPAR.CUS-INV-NET  - 
                                          COPAR.CUS-PAYMENT  - 
@@ -1177,10 +1200,7 @@ CLASS SalesmanCustomersData:
                                             INPUT ipcShipTo      AS CHARACTER,
                                             OUTPUT opcError      AS CHARACTER,
                                             OUTPUT TABLE ttCustShippingAddress):
-                                                
-                                               /* MESSAGE "En el metodo getCustShippingAddress " string(ipcShipTo)
-                                                VIEW-AS ALERT-BOX.*/
- 
+
  /*It is used to decide which address is used for primary address which is assigned "YES" value.*/  
     DEFINE VARIABLE lFlag AS LOGICAL NO-UNDO.
     DEFINE VARIABLE lcShipActive      AS LOGICAL  INITIAL YES. 
@@ -1191,7 +1211,7 @@ CLASS SalesmanCustomersData:
    END.
     
      //Gama le anadio and SHIP-TO = "" ?                                                                            
-     IF AVAILABLE CCSMS AND ipcShipTo = ? OR ipcShipTo = "" THEN
+     IF AVAILABLE CCSMS /*AND ipcShipTo = ? OR ipcShipTo = ""*/ THEN
       DO: 
             CREATE ttCustShippingAddress.
             ASSIGN ttCustShippingAddress.customerNumber = ipcCustNum
@@ -1342,7 +1362,6 @@ CLASS SalesmanCustomersData:
     OUTPUT CLOSE.*/   
      IF NOT CAN-FIND(FIRST ttCustShippingAddress) THEN 
       DO:
-         
         CREATE ttCustShippingAddress.
         ASSIGN ttCustShippingAddress.customerNumber = ipcCustNum
                ttCustShippingAddress.ship_number    = "PRIMARY":U
@@ -1726,7 +1745,7 @@ CLASS SalesmanCustomersData:
                                           OUTPUT TABLE ttCustBillingAddress,
                                           OUTPUT cError        AS CHARACTER,
                                           OUTPUT opiStatusCode AS INTEGER):
-       
+ 
     DEFINE VARIABLE deTotalAmtOverdue AS DECIMAL   NO-UNDO.
     DEFINE VARIABLE deAvailCredit     AS DECIMAL   NO-UNDO.
     DEFINE VARIABLE deTotalOpenOrdr   AS DECIMAL   NO-UNDO.
@@ -1771,12 +1790,6 @@ CLASS SalesmanCustomersData:
     DEFINE VARIABLE willShowAllCustomers AS LOGICAL NO-UNDO.
     FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID BEGINS "OE-SALES-OPERATOR" AND PARAMFL.PARAM-STATUS NO-LOCK NO-ERROR.
     willShowAllCustomers = AVAIL PARAMFL.
-    /*
-    MESSAGE "Entro a fillAllCustomersData"
-    VIEW-AS ALERT-BOX.
-    
-    MESSAGE "ParamaFL Prendido " string(willShowAllCustomers)
-    VIEW-AS ALERT-BOX.*/
     
     /* Create a list of customers assigned to Salesrep based on CCSMS and shpto*/
     FOR EACH ccsms WHERE CCSMS.CUST-Number BEGINS ipcCompanyID NO-LOCK:
