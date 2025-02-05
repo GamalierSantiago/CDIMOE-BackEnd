@@ -46,7 +46,8 @@ CLASS SalesmanCustomersData:
     FIELD recentOrderDate     AS CHARACTER
     FIELD onHoldCustomer      AS LOGICAL
     FIELD poRequired          AS LOGICAL
-    FIELD number_of_days      AS INTEGER.  
+    FIELD number_of_days      AS INTEGER
+    FIELD pageNumber          AS INTEGER.  
 
   DEFINE PRIVATE TEMP-TABLE ttSortCustomer NO-UNDO LIKE ttCustomer.
         
@@ -190,7 +191,7 @@ CLASS SalesmanCustomersData:
                                        OUTPUT TABLE ttCustAmountOverdue,
                                        OUTPUT TABLE ttCustBillingAddress,
                                        OUTPUT cError        AS CHARACTER,
-                                       OUTPUT opiStatusCode AS INTEGER):
+                                       OUTPUT opiStatusCode AS INTEGER):                                                             
 	     
     DEFINE VARIABLE deTotalAmtOverdue AS DECIMAL   NO-UNDO.
     DEFINE VARIABLE deAvailCredit     AS DECIMAL   NO-UNDO.
@@ -220,8 +221,10 @@ CLASS SalesmanCustomersData:
     objCommonSrc    = NEW CommonSource(INPUT cToken).
     custOpenOrdrObj = NEW CustomerOrders(INPUT cToken).
                                       	
-    FOR FIRST CCSMS WHERE CCSMS.CUST-NUMBER EQ cCustNumber NO-LOCK:
+    FOR FIRST CCSMS WHERE CCSMS.CUST-NUMBER EQ TRIM(cCustNumber) NO-LOCK:
      
+     MESSAGE "cCustNumber " cCustNumber
+     VIEW-AS ALERT-BOX.
       /* FOR EACH COOHD WHERE 
 	    COOHD.CUST-NUMBER EQ CCSMS.CUST-NUMBER 
 	    NO-LOCK BY COOHD.ORDER-DATE :
@@ -1829,7 +1832,8 @@ CLASS SalesmanCustomersData:
 END.
   
     
-    
+DEFINE VARIABLE Counter AS INTEGER NO-UNDO INITIAL 0.
+DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.     
            
    // FOR EACH CCSMS WHERE (CCSMS.SALES-REP-ID EQ ipcSalesRepId AND CCSMS.CUST-Number BEGINS ipcCompanyID) NO-LOCK:
       FOR EACH ttSalesManCustList NO-LOCK:
@@ -1857,6 +1861,8 @@ END.
                                    INPUT CCSMS.TERMS-CODE, 
                                    OUTPUT opcDiscountPercent,                                    
                                    OUTPUT opcError). */
+                                   
+      ASSIGN Counter = Counter + 1.                             
           
       CREATE ttCustomer.
       ASSIGN 
@@ -1873,7 +1879,14 @@ END.
         ttCustomer.poRequired                = IF CCSMS.ORG-TYPE MATCHES "P" THEN TRUE ELSE FALSE
         ttCustomer.number_of_days            = iNoOfDays 
         ttCustomer.discount                  = opcDiscountPercent
-        no-error. 
+        ttCustomer.pageNumber                = PageNumber
+        no-error.
+        
+        IF Counter MODULO 20 = 0 THEN DO:
+        ASSIGN PageNumber = PageNumber + 1.
+        MESSAGE "PageNumber " PageNumber
+        VIEW-AS ALERT-BOX.
+        END. //IF Counter MODULO 20 
        ASSIGN deCusSaleAmt90day = 0.0.       
       /* Logic to get the total sales of a customer */
       
