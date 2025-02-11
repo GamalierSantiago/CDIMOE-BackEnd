@@ -5440,7 +5440,7 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
       FIND FIRST APIDATA WHERE APIDATA.SALES-REP-ID EQ ipcSalesRepId 
                            AND APIDATA.Company EQ cCompanyCode 
                            AND APIDATA.APIName EQ "GETCUSTOMER"
-                           AND APIDATA.PageNumber = ipcPageNumber NO-LOCK NO-ERROR.
+                           /*AND APIDATA.PageNumber = ipcPageNumber*/ NO-LOCK NO-ERROR.
       IF AVAILABLE APIDATA THEN
       DO:
          COPY-LOB FROM APIDATA.Data1 TO oplcSalespersonData.
@@ -5746,7 +5746,7 @@ END.
   FIND FIRST APIDATA WHERE APIDATA.SALES-REP-ID EQ ipcSalesRepId 
                        AND APIDATA.Company EQ cCompanyCode 
                        AND APIDATA.APIName EQ "GETCUSTOMER"
-                       AND APIDATA.PAGENUMBER EQ Counter NO-LOCK NO-ERROR.
+                       /*AND APIDATA.PAGENUMBER EQ Counter*/ NO-LOCK NO-ERROR.
                        
   IF NOT AVAILABLE APIDATA THEN 
      CREATE APIDATA.
@@ -5758,7 +5758,7 @@ END.
              APIDATA.Company =  cCompanyCode
              APIDATA.SALES-REP-ID = ipcSalesRepId
              APIDATA.LastUpdated  = TODAY
-             APIDATA.PAGENUMBER = Counter.
+             /*APIDATA.PAGENUMBER = Counter*/.
      COPY-LOB FROM oplcSalespersonData TO APIDATA.Data1 NO-ERROR.     
   END.
  END. // While 

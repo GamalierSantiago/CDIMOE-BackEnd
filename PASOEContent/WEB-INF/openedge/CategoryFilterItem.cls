@@ -224,7 +224,7 @@ CLASS CategoryFilterItem:
       cTable        = "CINV1":U
       cInitialQuery = 'FOR EACH CINV1 WHERE (CINV1.HIDE-IN-WM-APPS NE "Y":U) AND (CINV1.LINE-UP NE "D":U AND CINV1.LINE-UP NE "W":U AND CINV1.LINE-UP NE "X":U ) AND CINV1.item-number':U + ' BEGINS ':U  + '"':U + ipcCompanyCode + '"':U.
       // Query condition of lineup changed from OR to AND so it ignores all items with line-up D, X and Wss
-    /*      
+         
     FOR FIRST _file WHERE _File._File-name EQ cTable NO-LOCK:
       /* Loop over all indexes */
       FOR EACH _index OF _file NO-LOCK:
@@ -252,12 +252,12 @@ CLASS CategoryFilterItem:
       END. /* FOR EACH _index..*/
       
     END. /* FOR FIRST _file..*/
-   */
+   
 
    
    
     //WHILE Counter <= 5 DO:
-        
+   /*     
     CREATE ttIndexTable.
               ASSIGN 
                 ttIndexTable.field-name = "ALT-ITEM-NO"
@@ -321,7 +321,7 @@ CLASS CategoryFilterItem:
                 ttIndexTable.index-name = "vin-number"
                 ttIndexTable.iWordIndex = ?.            
     //END.
-    
+    */
       
     /* Prepare dynamic query 
      cNonASCIIString now stores the comma seperated list of words*/
@@ -376,6 +376,9 @@ CLASS CategoryFilterItem:
                 ASSIGN 
                   cSearchPattern = '"':U + cSearchPattern + '"':U
                   cQuery         = cInitialQuery + " AND ":U + ttIndexTable.field-name + " BEGINS ":U  +  cSearchPattern  + " No-Lock ":U NO-ERROR.
+                  
+                  MESSAGE "cQuery freeForm" cQuery
+                  VIEW-AS ALERT-BOX.
    
             END. /* WHEN "CHARACTER":U THEN */    
 
@@ -836,16 +839,579 @@ CLASS CategoryFilterItem:
     
     IF itemJsonArray:LENGTH EQ 0 THEN
     DO:
-      /* Get multilingual message when no record found for search criteria */
-      objCommonSrc:getMessages(INPUT  ipcLangID,
-                               INPUT  ConstantInitializer:c200NoProductFound,                                                              
-                               OUTPUT cError,
-                               OUTPUT opiStatusCode).
-        
-      IF cError NE "":U THEN 
-        UNDO,THROW NEW AppError(cError,1).  
+        THIS-OBJECT:AproxProductSearch(INPUT ipcCustNumber,
+                                           INPUT ipcInputString,
+                                           INPUT ipcCompanyCode,
+                                           INPUT ipiWareHouseNo,
+                                           INPUT ipcLangID,
+                                           OUTPUT opiTotalRecords,
+                                           OUTPUT opiStatusCode,
+                                           OUTPUT opcError,
+                                           OUTPUT oplcSearchData).
+                                           
+     MESSAGE "oplcSearchData" string(oplcSearchData)
+     VIEW-AS ALERT-BOX.
+                                           
+      IF length(oplcSearchData) EQ 0 THEN 
+      DO:
+         MESSAGE "oplcSearchData adentro de length" string(oplcSearchData)
+         VIEW-AS ALERT-BOX.                                  
+          /* Get multilingual message when no record found for search criteria */
+          objCommonSrc:getMessages(INPUT  ipcLangID,
+                                   INPUT  ConstantInitializer:c200NoProductFound,                                                              
+                                   OUTPUT cError,
+                                   OUTPUT opiStatusCode).
+            
+          IF cError NE "":U THEN 
+            UNDO,THROW NEW AppError(cError,1).
+      END. //IF oplcSearchData:LENGTH EQ 0
     END. /* IF itemJsonArray:LENGTH EQ 0 THEN */   
       
+    /* Provide error message, if any */
+    CATCH errorObj AS AppError:           
+      ASSIGN 
+        opcError = errorObj:GetMessage(1).  
+    END CATCH.
+   
+    FINALLY:
+      
+      INPUT CLOSE.
+        
+      IF VALID-HANDLE(hQuery) THEN
+      DO:
+        hQuery:QUERY-CLOSE.
+        DELETE OBJECT hQuery.
+      END.
+  
+      IF VALID-HANDLE(hBuffer) THEN
+        DELETE OBJECT hBuffer.  
+      
+      IF VALID-OBJECT(itemJsonArray) THEN
+        DELETE OBJECT itemJsonArray.
+      
+      IF VALID-OBJECT(objCommonSrc) THEN
+        DELETE OBJECT objCommonSrc.
+          
+      IF VALID-OBJECT(objCustProductsPrice) THEN
+        DELETE OBJECT objCustProductsPrice.
+      
+      IF VALID-OBJECT(itemJsonObj) THEN
+        DELETE OBJECT itemJsonObj.
+     
+      IF VALID-OBJECT(prodInfoObj) THEN
+        DELETE OBJECT prodInfoObj.
+     
+      IF VALID-OBJECT(prodInfoArr) THEN
+        DELETE OBJECT prodInfoArr. 
+      
+      IF VALID-OBJECT(pictureJsonArr) THEN
+        DELETE OBJECT pictureJsonArr.  
+      
+      IF VALID-OBJECT(orderTaxArray) THEN
+        DELETE OBJECT orderTaxArray.
+        
+      IF VALID-OBJECT(objOrderTax) THEN
+        DELETE OBJECT objOrderTax.        
+    END FINALLY.
+                     
+  END METHOD.
+  
+  
+  /*---------------------------SearchAmazon--------------------------------------*/
+  
+  METHOD PUBLIC VOID AproxProductSearch(INPUT ipcCustNumber    AS CHARACTER,
+                                           INPUT ipcInputString   AS LONGCHAR,
+                                           INPUT ipcCompanyCode   AS CHARACTER,
+                                           INPUT ipiWareHouseNo   AS INTEGER,
+                                           INPUT ipcLangID        AS CHARACTER,
+                                           OUTPUT opiTotalRecords AS INTEGER,
+                                           OUTPUT opiStatusCode   AS INTEGER,
+                                           OUTPUT opcError        AS CHARACTER,
+                                           OUTPUT oplcSearchData  AS LONGCHAR):
+                                               
+                                               MESSAGE "Entro a AproxProductSearch Intento 4"
+                                               VIEW-AS ALERT-BOX.
+      
+    
+    DEFINE VARIABLE objCustProductsPrice AS CLASS     ProductPrices     NO-UNDO.
+    DEFINE VARIABLE objOrderTax          AS CLASS     OrderTaxes        NO-UNDO.
+    DEFINE VARIABLE orderTaxArray        AS CLASS     JsonArray         NO-UNDO.
+    DEFINE VARIABLE objCommonSrc         AS CLASS     CommonSource      NO-UNDO.
+    DEFINE VARIABLE itemJsonObj          AS CLASS     JsonObject        NO-UNDO.
+    DEFINE VARIABLE prodInfoObj          AS CLASS     JsonObject        NO-UNDO.
+    DEFINE VARIABLE prodInfoArr          AS CLASS     JsonArray         NO-UNDO.
+    DEFINE VARIABLE pictureJsonArr       AS CLASS     JsonArray         NO-UNDO.
+    DEFINE VARIABLE itemJsonArray        AS CLASS     JsonArray         NO-UNDO. 
+    DEFINE VARIABLE objcustomerOrder     AS CLASS     customerorders    NO-UNDO.  
+    DEFINE VARIABLE hQuery               AS HANDLE    NO-UNDO.
+    DEFINE VARIABLE hBuffer              AS HANDLE    NO-UNDO.
+    DEFINE VARIABLE iCount               AS INTEGER   NO-UNDO.
+    DEFINE VARIABLE iarrayIndex          AS INTEGER   NO-UNDO.
+    DEFINE VARIABLE cKeyword             AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cSearchPattern       AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cTable               AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cQuery               AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cInitialQuery        AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cBreakString         AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cNonASCIIString      AS CHARACTER NO-UNDO.
+    
+    
+    DEFINE VARIABLE discount-perc        LIKE CCSMS.DISC-PERC    NO-UNDO.
+    DEFINE VARIABLE contract-ind         LIKE CCSMS.CONTRACT-IND NO-UNDO.
+    DEFINE VARIABLE spec-dist-i          LIKE CCSMS.SPEC-DICT-I  NO-UNDO.
+    DEFINE VARIABLE qty-brk-cd           LIKE CCSMS.QTY-BRK-CD   NO-UNDO.
+    DEFINE VARIABLE cCustType            LIKE CCSMS.CUST-TYPE    NO-UNDO.
+    
+    DEFINE VARIABLE SELLING-PRC          AS DECIMAL   NO-UNDO.
+    DEFINE VARIABLE BASE-PRC             AS DECIMAL   NO-UNDO.
+    DEFINE VARIABLE cPriceList           AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cSourceDir           AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cItemImage           AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cFileType            AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cItemNumber          AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE lByColor             AS LOGICAL   NO-UNDO.
+    DEFINE VARIABLE SHIP-NO              AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE QTY-FULL             AS INTEGER   FORMAT "->>>9" NO-UNDO.
+    DEFINE VARIABLE QTY-UNIT             AS INTEGER   FORMAT "->>>9" NO-UNDO.
+    
+    DEFINE VARIABLE cPictureFieldVal     AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cPicturePDFName      AS CHARACTER NO-UNDO. /* file name without path */
+    DEFINE VARIABLE ldMinPrice           AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE ldUptoQty            AS DECIMAL EXTENT 5 NO-UNDO.
+    DEFINE VARIABLE ldUptoQtyPrice       AS DECIMAL EXTENT 5 NO-UNDO.
+    DEFINE VARIABLE ldPercent            AS DECIMAL          NO-UNDO.
+    DEFINE VARIABLE ldbuyforFreeQty      AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE ldgetforFreeQty      AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE lcallPrice           AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cDomain              AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cPackSize            AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE byitem               AS LOGICAL NO-UNDO.
+    DEFINE BUFFER buff-cinv1 FOR cinv1.
+    DEFINE VARIABLE liQtyonHand AS INT64 NO-UNDO.
+    DEFINE VARIABLE liCommitQty AS INT64 NO-UNDO.
+    DEFINE VARIABLE cPattern AS CHARACTER NO-UNDO.
+    /* Limiting search string to only 50 characters */
+    IF LENGTH(ipcInputString) GT 50 THEN
+      ASSIGN ipcInputString = SUBSTRING(ipcInputString,1,50).
+       
+    ASSIGN 
+      itemJsonArray        = NEW JsonArray()
+      objCommonSrc         = NEW CommonSource(INPUT cToken)
+      objCustProductsPrice = NEW ProductPrices(INPUT cToken)
+      orderTaxArray        = NEW JsonArray()
+      objOrderTax          = NEW OrderTaxes(INPUT cToken)
+      objcustomerOrder     = NEW customerorders(INPUT cToken).
+                    
+    FIND CCSMS WHERE CCSMS.CUST-NUMBER EQ ipcCustNumber NO-LOCK NO-ERROR.
+    IF AVAIL CCSMS THEN
+    DO: 
+      ASSIGN 
+        cCustType     = CCSMS.CUST-TYPE
+        qty-brk-cd    = CCSMS.QTY-BRK-CD
+        spec-dist-i   = CCSMS.SPEC-DICT-I
+        contract-ind  = CCSMS.CONTRACT-IND
+        discount-perc = CCSMS.DISC-PERC
+        cPriceList    = CCSMS.PRICE-LIST.  
+                
+      FIND FIRST SHPTO WHERE SHPTO.CUST-NUMBER EQ CCSMS.CUST-NUMBER NO-LOCK NO-ERROR.
+      IF AVAILABLE SHPTO AND SHPTO.PRICE-LIST NE "":U THEN
+        ASSIGN cPriceList = SHPTO.PRICE-LIST.
+
+    END. /* IF AVAIL CCSMS THEN */
+    
+    /* Logic for breaking the string word by word and making a complete word when a delimiter is found */
+    DO iCount = 1 TO LENGTH(ipcInputString):
+      ASSIGN 
+        cBreakString = SUBSTRING(ipcInputString, iCount, 1).
+  
+      IF (ASC(cBreakString) GE 0  AND ASC(cBreakString) LE 38) OR
+         (ASC(cBreakString) GE 40 AND ASC(cBreakString) LE 44) OR
+         (ASC(cBreakString) GE 58 AND ASC(cBreakString) LE 64) OR
+         (ASC(cBreakString) GE 91 AND ASC(cBreakString) LE 96) OR
+         ASC(cBreakString)  GE 123                             THEN 
+ 
+        ASSIGN cNonASCIIString = cNonASCIIString + ",":U.
+ 
+      ELSE
+        ASSIGN cNonASCIIString = cNonASCIIString + cBreakString.
+  
+    END. /*DO i = 1 TO LENGTH(cInputString):*/
+
+    /* cTable EQ "CINV1" can be parameteric and can be replaced later with other tables also */
+    ASSIGN 
+      cTable        = "CINV1":U
+      cInitialQuery = 'FOR EACH CINV1 WHERE (CINV1.HIDE-IN-WM-APPS NE "Y":U) AND (CINV1.LINE-UP NE "D":U AND CINV1.LINE-UP NE "W":U AND CINV1.LINE-UP NE "X":U ) AND CINV1.item-number':U + ' BEGINS ':U  + '"':U + ipcCompanyCode + '"':U.
+           
+       
+    /* Prepare dynamic query 
+     cNonASCIIString now stores the comma seperated list of words*/
+    
+      CREATE BUFFER hBuffer FOR TABLE cTable.
+      CREATE QUERY hQuery.      
+               
+      hQuery:SET-BUFFERS(hBuffer). 
+    
+      //DO iFieldIndex = 1 TO hBuffer:NUM-FIELDS:
+              
+        ASSIGN 
+          cSearchPattern = cKeyword.
+    
+        ASSIGN 
+                  //cSearchPattern = '"':U + cSearchPattern + '*':U + '"':U
+                  //cPattern = "*" + REPLACE(cSearchPattern, " ", "*") + "*"
+                  cSearchPattern = "*" + REPLACE(ipcInputString, " ", "*") + "*"
+                  cQuery         = cInitialQuery + " AND ":U + ' cinv1.DESCRIPTION + cinv1.pack MATCHES "':U  +  cSearchPattern  + '" No-Lock ':U NO-ERROR.
+                  
+                  MESSAGE "cQuery " cQuery
+                  VIEW-AS ALERT-BOX. 
+       
+        IF NOT ERROR-STATUS:ERROR THEN
+        DO:       
+          hQuery:QUERY-PREPARE(cQuery).  
+
+          hQuery:QUERY-OPEN().         
+
+          //hQuery:GET-FIRST().
+          
+          
+          repeat_blk:
+          REPEAT:
+              
+            hQuery:GET-NEXT().
+            MESSAGE hQuery:QUERY-OFF-END
+            VIEW-AS ALERT-BOX.                     
+            IF hQuery:QUERY-OFF-END THEN LEAVE.
+              
+            ASSIGN 
+              cItemNumber = hBuffer:BUFFER-FIELD("item-number":U):BUFFER-VALUE
+              cPackSize   = hBuffer:BUFFER-FIELD("PACK":U):BUFFER-VALUE.
+            FIND buff-cinv1 WHERE buff-cinv1.ITEM-NUMBER EQ cItemNumber NO-LOCK NO-ERROR. 
+            IF AVAILABLE buff-cinv1 AND buff-cinv1.LINE-UP EQ "D" THEN NEXT. 
+            FIND FIRST CINV2 
+              WHERE CINV2.ITEM-NUMBER  EQ cItemNumber
+              AND   CINV2.WAREHOUSE-NO EQ ipiWareHouseNo NO-LOCK NO-ERROR.
+/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
+/*                                 AND PARAMFL.COMPANY-CODE = ipcCompanyCode               */
+/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
+/*            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN                                */
+/*            DO:                                                                          */
+/*                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.                 */
+/*            END.                                                                         */
+            IF CCSMS.CONTRACT-IND EQ "A" THEN 
+            DO:
+                IF NOT CAN-FIND(CINV3 WHERE CINV3.ITEM-NUMBER EQ cItemNumber AND CINV3.PRICE-LIST EQ CCSMS.PRICE-LIST ) THEN NEXT.
+            END.                                                  
+            /* avoid duplicate records */
+            IF itemJsonArray:LENGTH NE 0 THEN 
+            DO iarrayIndex = 1 TO itemJsonArray:LENGTH:
+            
+              ASSIGN 
+                itemJsonObj = itemJsonArray:GetJsonObject(INPUT iarrayIndex).
+          
+              IF itemJsonObj:Has(INPUT "item_number":U) THEN
+              DO:
+                IF itemJsonObj:GetCharacter(INPUT "item_number") = cItemNumber THEN
+                DO:
+                  NEXT repeat_blk.           
+                END. /* IF CSAHF.ITEM-NUMBER EQ itemJsonObj:GetCharacter(INPUT "item_number":U) THEN*/
+               
+              END. /* IF itemJsonObj:Has(INPUT "item_number":U) THEN */
+                    
+            END. /* IF itemJsonArray:LENGTH NE 0 THEN */
+                                                                         
+            ASSIGN 
+              itemJsonObj    = NEW JsonObject()
+              prodInfoArr    = NEW JsonArray () 
+              pictureJsonArr = NEW jsonArray ()
+              lByColor       = hBuffer:BUFFER-FIELD("by-color":U):BUFFER-VALUE.           
+            
+            ASSIGN 
+              opiTotalRecords = opiTotalRecords + 1.
+          
+            lcDescription = REPLACE(hBuffer:BUFFER-FIELD("Description":U):BUFFER-VALUE,"'", "").
+            lcDescription = REPLACE(lcDescription,'"', '').
+            lcDescription = REPLACE(lcDescription,"/", "").
+            lcDescription = REPLACE(lcDescription,"\", "").
+            
+            itemJsonObj:ADD(INPUT "class_code":U,   INPUT hBuffer:BUFFER-FIELD("class-code":U):BUFFER-VALUE).
+            itemJsonObj:ADD(INPUT "item_number":U,  INPUT cItemNumber).
+            itemJsonObj:ADD(INPUT "description":U,  INPUT lcDescription ). //REPLACE(hBuffer:BUFFER-FIELD("Description":U):BUFFER-VALUE,"'", "") ). 
+            itemJsonObj:ADD(INPUT "item_uom":U,     INPUT hBuffer:BUFFER-FIELD("ITEM-UOM":U):BUFFER-VALUE).
+            itemJsonObj:ADD(INPUT "uom_qty":U,      INPUT hBuffer:BUFFER-FIELD("UOM-QTY":U):BUFFER-VALUE).
+            itemJsonObj:ADD(INPUT "on_order":U,     INPUT hBuffer:BUFFER-FIELD("QTY-ON-ORDER":U):BUFFER-VALUE).
+            itemJsonObj:ADD(INPUT "category_id":U,  INPUT hBuffer:BUFFER-FIELD("CLASS-CODE":U):BUFFER-VALUE). 
+            itemJsonObj:ADD(INPUT "family_code":U,  INPUT hBuffer:BUFFER-FIELD("FAMILY":U):BUFFER-VALUE).                                  
+                                  
+            /* Assign value of quantity on hand of specific item */
+            
+                               
+            IF AVAILABLE CINV2 THEN
+            DO:
+               IF CAN-FIND(FIRST sethd WHERE SETHD.SET-NO EQ CINV2.ITEM-NUMBER) THEN 
+               DO:
+                  liQtyonHand = 0.
+                  IF CAN-FIND(FIRST sethd WHERE SETHD.SET-NO EQ CINV2.ITEM-NUMBER) THEN 
+                  DO:
+                     FOR EACH setdt WHERE SETDT.SET-NO EQ CINV2.ITEM-NUMBER NO-LOCK:
+                       FIND FIRST bf-cinv2 WHERE bf-cinv2.ITEM-NUMBER EQ SETDT.ITEM-NUMBER NO-LOCK NO-ERROR.
+                       IF AVAILABLE bf-cinv2 THEN 
+                       DO:
+                         IF liQtyonHand EQ 0 OR liQtyonHand GT bf-CINV2.QTY-ONHAND THEN 
+                         ASSIGN liQtyonHand = bf-CINV2.QTY-ONHAND 
+                                liCommitQty = bf-CINV2.QTY-COMMITED.
+                       END.    
+                     END.
+                     itemJsonObj:ADD(INPUT "qty_on_hand":U, INPUT liQtyonHand ).
+                     itemJsonObj:ADD(INPUT "commit_qty":U,  INPUT liCommitQty ).      
+                  END. 
+               END. 
+               ELSE 
+               DO:
+                  itemJsonObj:ADD(INPUT "qty_on_hand":U, INPUT CINV2.QTY-ONHAND ).
+                  itemJsonObj:ADD(INPUT "commit_qty":U,  INPUT CINV2.QTY-COMMITED ).
+               END.   
+            END.
+            
+            ELSE
+            DO:
+              itemJsonObj:ADD(INPUT "qty_on_hand":U, INPUT hBuffer:BUFFER-FIELD("QTY-ONHAND":U):BUFFER-VALUE).
+              itemJsonObj:ADD(INPUT "commit_qty":U,  INPUT 0).
+            END.  
+               
+            /*By-calling getPrice() method, assign selling-price of a specific Item corresponding to a specific customer*/           
+            
+            objCustProductsPrice:getProductPrices(INPUT ipcLangID,
+                                                  INPUT ipcCustNumber,
+                                                  INPUT cItemNumber,
+                                                  INPUT YES,
+                                                  INPUT discount-perc, 
+                                                  OUTPUT SELLING-PRC,
+                                                  OUTPUT BASE-PRC,
+                                                  INPUT  SHIP-NO,
+                                                  INPUT  QTY-FULL,
+                                                  INPUT QTY-UNIT,
+                                                  INPUT cPriceList,
+                                                  INPUT ipcCompanyCode).
+            
+            
+             
+            IF hBuffer:BUFFER-FIELD("by-size":U):BUFFER-VALUE OR lByColor THEN
+            DO:  
+              FOR EACH size WHERE SIZE.WAREHOUSE-NO EQ ipiWareHouseNo 
+                              AND SIZE.ITEM-NUMBER  EQ cItemNumber    NO-LOCK:
+                                    
+                ASSIGN 
+                  prodInfoObj = NEW jsonObject ().
+                                        
+                prodInfoObj:ADD(INPUT "size",       INPUT if size.size NE "" then size.size ELSE 'Not Applicable':U).
+                prodInfoObj:ADD(INPUT "color",      INPUT IF lByColor THEN REPLACE(SIZE.DESCRIPTION,"'", "")  ELSE 'Not Applicable':U).
+                prodInfoObj:ADD(INPUT "in_stock",   INPUT (SIZE.QTY-ONHAND - SIZE.QTY-COMMITED)).
+                prodInfoObj:ADD(INPUT "unit_price", INPUT SELLING-PRC).
+                prodInfoArr:ADD(INPUT prodInfoObj).
+                              
+              END. /* FOR EACH size...*/
+            END. /* IF hBuffer:BUFFER-FIELD("by-size":U):BUFFER-VALUE THEN */            
+            
+            IF prodInfoArr:LENGTH EQ 0 THEN
+            DO:
+              ASSIGN 
+                prodInfoObj = NEW jsonObject ().
+                
+              prodInfoObj:ADD(INPUT "size":U,  INPUT 'Not Applicable':U).
+              prodInfoObj:ADD(INPUT "color":U, INPUT 'Not Applicable':U).
+                
+              IF AVAILABLE CINV2 THEN
+                prodInfoObj:ADD(INPUT "in_stock":U, INPUT CINV2.QTY-ONHAND - CINV2.QTY-COMMITED ).
+              ELSE
+                prodInfoObj:ADD(INPUT "in_stock":U, INPUT hBuffer:BUFFER-FIELD("QTY-ONHAND":U):BUFFER-VALUE ).
+                
+              prodInfoObj:ADD(INPUT "unit_price":U, INPUT SELLING-PRC).
+              prodInfoArr:ADD(INPUT prodInfoObj).
+              
+            END.
+            
+            IF cItemNumber MATCHES "*" THEN
+              cItemNumber = CAPS(TRIM(REPLACE(cItemNumber, "*", "-") , "-":U)).
+     
+          /*  FILE-INFO:FILE-NAME = ConstantInitializer:cImageDir + "/":U + cItemNumber.
+            IF FILE-INFO:FULL-PATHNAME EQ ? THEN 
+            DO:
+                FIND FIRST paramfl WHERE PARAMFL.PARAM-ID EQ "IMAGE-LOCATION":U NO-LOCK NO-ERROR.
+                IF AVAILABLE paramfl THEN 
+                  ASSIGN FILE-INFO:FILE-NAME = PARAMFL.PARAM-VALUE1 
+                         FILE-INFO:FILE-NAME =  FILE-INFO:FILE-NAME + "\" + cItemNumber NO-ERROR.
+            END.
+            IF FILE-INFO:FULL-PATHNAME NE ? THEN
+            DO: */
+            cSourceDir = objcustomerorder:ImgDirectory(INPUT cItemNumber, INPUT ipcCompanyCode, OUTPUT byitem). //this-object:ImgDirectory(INPUT cItemNumber).
+            CDomain    = objcustomerorder:FINDCDN(ipcCompanyCode).  //THIS-OBJECT:FINDCDN().
+           
+           IF cSourceDir NE "x" THEN 
+           DO:
+              
+/*              ASSIGN                                 */
+/*                cSourceDir = FILE-INFO:FULL-PATHNAME.*/
+              FILE-INFO:FILE-NAME = cSourceDir.
+              
+              cSourceDir = FILE-INFO:FULL-PATHNAME.
+              INPUT FROM OS-DIR(cSourceDir).
+              IF byitem THEN 
+              DO:
+                REPEAT:
+                     IMPORT cItemImage ^ cFileType.
+                     IF cFileType EQ "F":U THEN
+                     do:
+                        pictureJsonArr:ADD(CDomain + "/":U + cItemNumber + "/":U + Replace(cItemImage," ","%20")).
+                     end.             
+                 END.    
+              END.
+              ELSE 
+              DO:
+                  
+                REPEAT:
+                  IMPORT cItemImage ^ cFileType.
+                
+                  IF cFileType EQ "F":U AND INDEX(cItemImage , cItemNumber) GT 0 THEN
+                    pictureJsonArr:ADD(Cdomain + "/":U + Replace(cItemImage," ","%20")).   
+                            
+                END. 
+              END. 
+            END. /* IF cSourceDir NE "x" THEN */
+                                   
+            /* Populate itemJsonObj jsonArray with all items record correspond to specific category by calling PopulateItem() method */
+          
+            ASSIGN 
+              cPictureFieldVal = (hBuffer:BUFFER-FIELD("picture":U):BUFFER-VALUE)
+              cPicturePDFName  = SUBSTRING(cPictureFieldVal, R-INDEX(cPictureFieldVal, "\" ) + 1). /* Gives the last value of picture field */         
+            
+            itemJsonObj:ADD(INPUT "price":U, INPUT SELLING-PRC).
+            
+            IF cPictureFieldVal NE "":U THEN 
+            DO:
+              FILE-INFO:FILE-NAME = ConstantInitializer:cPDFDir + "/":U + cPicturePDFName + ".pdf".              
+              IF FILE-INFO:FULL-PATHNAME NE ? THEN
+              DO:
+                //itemJsonObj:ADD(INPUT "pdf_link":U, INPUT ConstantInitializer:cPDFDir + "/":U + hBuffer:BUFFER-FIELD("picture":U):BUFFER-VALUE).
+                itemJsonObj:ADD(INPUT "pdf_link":U, INPUT ConstantInitializer:cPDFDir + "/":U + cPicturePDFName + ".pdf").
+              END.
+              
+              ELSE
+                itemJsonObj:ADD(INPUT "pdf_link":U, INPUT THIS-OBJECT:PdfLink(cItemNumber,ipcCompanyCode ) ).
+            END. /* IF cPictureFieldVal NE "":U THEN  */
+            
+            ELSE
+              itemJsonObj:ADD(INPUT "pdf_link":U, INPUT THIS-OBJECT:PdfLink(cItemNumber, ipcCompanyCode)).
+            
+            itemJsonObj:ADD(INPUT "pictures":U,        INPUT pictureJsonArr).
+            itemJsonObj:Add(INPUT "more_product_data", INPUT prodInfoArr).
+            
+            
+            objOrderTax:getItemTaxForShipping(INPUT cItemNumber,
+                                              INPUT ipcCompanyCode,
+                                              INPUT ipcCustNumber,
+                                              INPUT ipiWareHouseNo,
+                                              INPUT "",
+                                              INPUT SELLING-PRC,
+                                              OUTPUT orderTaxArray).
+         
+            IF VALID-OBJECT(itemJsonObj) THEN
+              itemJsonObj:ADD(INPUT "item_tax_unit", INPUT orderTaxArray).
+            
+             itemJsonObj:ADD(INPUT "pack_size":U,      INPUT REPLACE(STRING(cPackSize),"'", "") ). 
+            /* Find minimum price of item if SalesRep is allowed to modify the price on mobile app*/
+          /*  FIND FIRST cinv3 WHERE CINV3.ITEM-NUMBER  EQ cItemNumber 
+                                and CINV3.price-list  EQ "Z" NO-LOCK NO-ERROR.
+                                
+            IF AVAILABLE CINV3 THEN 
+                ASSIGN ldMinPrice = CINV3.BREAK-PRICE.
+            ELSE 
+                ASSIGN ldMinPrice= 0. */
+          
+            IF cusertype = "mobileuser":u THEN 
+            DO:
+                ldMinPrice = THIS-OBJECT:FindLowPrice(INPUT ipcCompanyCode,
+                                                      INPUT ipcCustNumber,
+                                                      INPUT cItemNumber,
+                                                      INPUT IF AVAILABLE CCSMS THEN CCSMS.DISC-PERC ELSE 0 ).
+                itemJsonObj:ADD(INPUT "min_price":U,      INPUT ldMinPrice).
+                lcallPrice = "".
+                
+                
+                FIND PARAMFL WHERE PARAMFL.COMPANY-CODE = ipcCompanyCode
+                               AND PARAMFL.PARAM-ID     = "show-all-cinv3"
+                               AND PARAMFL.PARAM-STATUS = YES NO-LOCK NO-ERROR. 
+                if available PARAMFL AND CCSMS.CONTRACT-IND NE "A" then 
+                DO:
+                    
+                   lcallPrice = THIS-OBJECT:FindAllItemPrice(INPUT ipcCompanyCode,
+                                                             INPUT ipcCustNumber,
+                                                             INPUT cItemNumber,
+                                                             INPUT IF AVAILABLE CCSMS THEN CCSMS.DISC-PERC ELSE 0 ). 
+                   lcallPrice = STRING(SELLING-PRC) + "|" +  lcallPrice. 
+                                                                             
+                   itemJsonObj:ADD(INPUT "item_all_price":U,      INPUT lcallPrice). 
+                END.
+                ELSE 
+                 itemJsonObj:ADD(INPUT "item_all_price":U,      INPUT STRING(SELLING-PRC)).                      
+            END.
+            /* Find the discount on item if any */
+            FIND FIRST OFERT WHERE OFERT.ITEM-NUMBER EQ cItemNumber 
+                               AND OFERT.TO-DT       GE TODAY 
+                               AND OFERT.FROM-DT     LE TODAY NO-LOCK NO-ERROR. 
+                               
+            IF AVAILABLE OFERT THEN 
+            DO:
+                
+                      
+                ASSIGN ldUptoQty[1]       = OFERT.UP-TO-QTY[1]
+                       ldUptoQty[2]       = OFERT.UP-TO-QTY[2]
+                       ldUptoQty[3]       = OFERT.UP-TO-QTY[3]
+                       ldUptoQty[4]       = OFERT.UP-TO-QTY[4]
+                       ldUptoQty[5]       = OFERT.UP-TO-QTY[5]
+                       ldUptoQtyPrice[1]  = OFERT.PERCASE-DISC[1]
+                       ldUptoQtyPrice[2]  = OFERT.PERCASE-DISC[2]
+                       ldUptoQtyPrice[3]  = OFERT.PERCASE-DISC[3]
+                       ldUptoQtyPrice[4]  = OFERT.PERCASE-DISC[4]
+                       ldUptoQtyPrice[5]  = OFERT.PERCASE-DISC[5]
+                       ldPercent          = OFERT.PER-CENT
+                       ldbuyforFreeQty    = OFERT.PUR-FOR-FREE
+                       ldgetforFreeQty    = OFERT.FREE-CASES.
+                       
+                       
+            END.
+            
+            IF cusertype = "mobileuser":u THEN 
+            DO:
+                itemJsonObj:ADD(INPUT "up_to_qty1":U,            INPUT ldUptoQty[1]).
+                itemJsonObj:ADD(INPUT "up_to_price1":U,          INPUT ldUptoQtyPrice[1]).  
+                itemJsonObj:ADD(INPUT "up_to_qty2":U,            INPUT ldUptoQty[2]).
+                itemJsonObj:ADD(INPUT "up_to_price2":U,          INPUT ldUptoQtyPrice[2]). 
+                itemJsonObj:ADD(INPUT "up_to_qty3":U,            INPUT ldUptoQty[3]).
+                itemJsonObj:ADD(INPUT "up_to_price3":U,          INPUT ldUptoQtyPrice[3]). 
+                itemJsonObj:ADD(INPUT "up_to_qty4":U,            INPUT ldUptoQty[4]).
+                itemJsonObj:ADD(INPUT "up_to_price4":U,          INPUT ldUptoQtyPrice[4]). 
+                itemJsonObj:ADD(INPUT "up_to_qty5":U,            INPUT ldUptoQty[5]).
+                itemJsonObj:ADD(INPUT "up_to_price5":U,          INPUT ldUptoQtyPrice[5]).
+                itemJsonObj:ADD(INPUT "item_percent_for_disc":U, INPUT ldPercent).  
+                itemJsonObj:ADD(INPUT "buy_qty_to_get_free":U,   INPUT ldbuyforFreeQty).
+                itemJsonObj:ADD(INPUT "get_free_item":U,         INPUT ldgetforFreeQty).  
+            END.  
+            itemJsonArray:ADD(INPUT itemJsonObj).
+                                                   
+          END. /* REPEAT: */
+         
+        END. /* IF NOT ERROR-STATUS:ERROR THEN */ 
+            
+      
+    
+    
+    
+    ASSIGN 
+      oplcSearchData = itemJsonArray:GetJsonText().
+ 
+    MESSAGE "oplcSearchData AproxProductSearch" string(oplcSearchData)
+    VIEW-AS ALERT-BOX.   
+
     /* Provide error message, if any */
     CATCH errorObj AS AppError:           
       ASSIGN 
