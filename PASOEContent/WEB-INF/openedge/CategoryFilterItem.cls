@@ -472,13 +472,13 @@ CLASS CategoryFilterItem:
             FIND FIRST CINV2 
               WHERE CINV2.ITEM-NUMBER  EQ cItemNumber
               AND   CINV2.WAREHOUSE-NO EQ ipiWareHouseNo NO-LOCK NO-ERROR.
-/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                                 AND PARAMFL.COMPANY-CODE = ipcCompanyCode               */
-/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
-/*            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN                                */
-/*            DO:                                                                          */
-/*                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.                 */
-/*            END.                                                                         */
+            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                                 AND PARAMFL.COMPANY-CODE = ipcCompanyCode
+                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN
+            DO:
+                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.
+            END.
             IF CCSMS.CONTRACT-IND EQ "A" THEN 
             DO:
                 IF NOT CAN-FIND(CINV3 WHERE CINV3.ITEM-NUMBER EQ cItemNumber AND CINV3.PRICE-LIST EQ CCSMS.PRICE-LIST ) THEN NEXT.
@@ -1072,13 +1072,13 @@ CLASS CategoryFilterItem:
             FIND FIRST CINV2 
               WHERE CINV2.ITEM-NUMBER  EQ cItemNumber
               AND   CINV2.WAREHOUSE-NO EQ ipiWareHouseNo NO-LOCK NO-ERROR.
-/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                                 AND PARAMFL.COMPANY-CODE = ipcCompanyCode               */
-/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
-/*            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN                                */
-/*            DO:                                                                          */
-/*                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.                 */
-/*            END.                                                                         */
+            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                                 AND PARAMFL.COMPANY-CODE = ipcCompanyCode
+                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN
+            DO:
+                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.
+            END.
             IF CCSMS.CONTRACT-IND EQ "A" THEN 
             DO:
                 IF NOT CAN-FIND(CINV3 WHERE CINV3.ITEM-NUMBER EQ cItemNumber AND CINV3.PRICE-LIST EQ CCSMS.PRICE-LIST ) THEN NEXT.
@@ -2023,19 +2023,19 @@ CLASS CategoryFilterItem:
               lCheck = FALSE.
             
             
-/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                                 AND PARAMFL.COMPANY-CODE = ipcCompany                   */
-/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
-/*            IF AVAILABLE paramfl THEN                                                    */
-/*            DO:                                                                          */
-/*                FIND FIRST CINV2                                                         */
-/*                WHERE CINV2.ITEM-NUMBER  EQ CINV1.ITEM-NUMBER                            */
-/*                AND   CINV2.WAREHOUSE-NO EQ ipiWareHouseNo NO-LOCK NO-ERROR.             */
-/*                IF AVAILABLE CINV2 THEN                                                  */
-/*                DO:                                                                      */
-/*                  IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.               */
-/*                END.                                                                     */
-/*            END.                                                                         */
+            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                                 AND PARAMFL.COMPANY-CODE = ipcCompany
+                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl THEN
+            DO:
+                FIND FIRST CINV2
+                WHERE CINV2.ITEM-NUMBER  EQ CINV1.ITEM-NUMBER
+                AND   CINV2.WAREHOUSE-NO EQ ipiWareHouseNo NO-LOCK NO-ERROR.
+                IF AVAILABLE CINV2 THEN
+                DO:
+                  IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.
+                END.
+            END.
                               
             /********************************************************/
             /* VERIFY IF CUSTOMER SALES RECORD EXIST                */
@@ -2624,19 +2624,19 @@ CLASS CategoryFilterItem:
                          AND (CINV1.LINE-UP NE "D" OR CINV1.LINE-UP NE "W":U OR CINV1.LINE-UP NE "X":U ) NO-LOCK NO-ERROR.
       IF AVAILABLE CINV1 AND CINV1.LINE-UP NE "D" THEN
       DO:  
-/*        FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                     AND PARAMFL.COMPANY-CODE = ipcCompanyCode                       */
-/*                     AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.                */
-/*            IF AVAILABLE paramfl THEN                                                */
-/*            DO:                                                                      */
-/*                FIND FIRST CINV2                                                     */
-/*                WHERE CINV2.ITEM-NUMBER  EQ CINV1.ITEM-NUMBER                        */
-/*                AND   CINV2.WAREHOUSE-NO EQ ipiWareHouseNo NO-LOCK NO-ERROR.         */
-/*                IF AVAILABLE CINV2 THEN                                              */
-/*                DO:                                                                  */
-/*                  IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.           */
-/*                END.                                                                 */
-/*            END.                                                                     */
+        FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                     AND PARAMFL.COMPANY-CODE = ipcCompanyCode
+                     AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl THEN
+            DO:
+                FIND FIRST CINV2
+                WHERE CINV2.ITEM-NUMBER  EQ CINV1.ITEM-NUMBER
+                AND   CINV2.WAREHOUSE-NO EQ ipiWareHouseNo NO-LOCK NO-ERROR.
+                IF AVAILABLE CINV2 THEN
+                DO:
+                  IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.
+                END.
+            END.
         ASSIGN 
           iCount = iCount + 1.
         
@@ -3307,16 +3307,16 @@ END METHOD. /* End of getPromoImages() */
                 deQtyCommit  = CINV2.QTY-COMMITED.   
     END.    
        
-/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                                 AND PARAMFL.COMPANY-CODE = ipcCompanyCode               */
-/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
-/*            IF AVAILABLE paramfl THEN                                                    */
-/*            DO:                                                                          */
-/*                IF AVAILABLE CINV2 THEN                                                  */
-/*                DO:                                                                      */
-/*                  IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN RETURN.             */
-/*                END.                                                                     */
-/*            END.                                                                         */
+            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                                 AND PARAMFL.COMPANY-CODE = ipcCompanyCode
+                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl THEN
+            DO:
+                IF AVAILABLE CINV2 THEN
+                DO:
+                  IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN RETURN.
+                END.
+            END.
              
     FIND FIRST CCSMS WHERE CCSMS.CUST-NUMBER EQ ipcCustNumber NO-LOCK NO-ERROR.
     IF AVAIL CCSMS THEN

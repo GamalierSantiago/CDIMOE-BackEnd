@@ -2506,13 +2506,13 @@ OUTPUT CLOSE.   */
           END. 
           FIND FIRST CINV2 WHERE CINV2.ITEM-NUMBER  EQ CINV1.ITEM-NUMBER
                              AND CINV2.WAREHOUSE-NO EQ iWareHouseNo NO-LOCK NO-ERROR.
-/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                                 AND PARAMFL.COMPANY-CODE = cCompnyCode                  */
-/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
-/*            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN                                */
-/*            DO:                                                                          */
-/*                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.                 */
-/*            END.                                                                         */
+            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                                 AND PARAMFL.COMPANY-CODE = cCompnyCode
+                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN
+            DO:
+                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.
+            END.
           objCategory:getCategoryAllItems(  INPUT  ipcCustNum,
                                             INPUT  CINV1.CLASS-CODE,
                                             INPUT  CINV1.ITEM-NUMBER,
@@ -2577,13 +2577,13 @@ OUTPUT CLOSE.   */
           END.   
           FIND FIRST CINV2 WHERE CINV2.ITEM-NUMBER  EQ CINV1.ITEM-NUMBER
                              AND CINV2.WAREHOUSE-NO EQ iWareHouseNo NO-LOCK NO-ERROR.
-/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                                 AND PARAMFL.COMPANY-CODE = cCompnyCode                  */
-/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
-/*            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN                                */
-/*            DO:                                                                          */
-/*                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.                 */
-/*            END.                                                                         */
+            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                                 AND PARAMFL.COMPANY-CODE = cCompnyCode
+                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN
+            DO:
+                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.
+            END.
           objCategory:getCategoryAllItems(INPUT  ipcUserId,
             INPUT  CINV1.CLASS-CODE,
             INPUT  CINV1.ITEM-NUMBER,
@@ -6672,13 +6672,13 @@ METHOD PUBLIC VOID getCategoryItemsPagination(INPUT-OUTPUT ipcLastRowID         
           END. 
           FIND FIRST CINV2 WHERE CINV2.ITEM-NUMBER  EQ CINV1.ITEM-NUMBER
                              AND CINV2.WAREHOUSE-NO EQ iWareHouseNo NO-LOCK NO-ERROR.
-/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                                 AND PARAMFL.COMPANY-CODE = cCompnyCode                  */
-/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
-/*            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN                                */
-/*            DO:                                                                          */
-/*                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.                 */
-/*            END.                                                                         */
+            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                                 AND PARAMFL.COMPANY-CODE = cCompnyCode
+                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN
+            DO:
+                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.
+            END.
         objCategory:getCategoryAllItems(INPUT  ipcCustNum,
           INPUT  CINV1.CLASS-CODE,
           INPUT  CINV1.ITEM-NUMBER,
@@ -6769,13 +6769,13 @@ METHOD PUBLIC VOID getCategoryItemsPagination(INPUT-OUTPUT ipcLastRowID         
           END. 
           FIND FIRST CINV2 WHERE CINV2.ITEM-NUMBER  EQ CINV1.ITEM-NUMBER
                              AND CINV2.WAREHOUSE-NO EQ iWareHouseNo NO-LOCK NO-ERROR.
-/*            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"*/
-/*                                 AND PARAMFL.COMPANY-CODE = cCompnyCode                  */
-/*                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.        */
-/*            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN                                */
-/*            DO:                                                                          */
-/*                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.                 */
-/*            END.                                                                         */
+            FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "DO-NOT-ALLOW-NEGATIVE-INV-ORDER"
+                                 AND PARAMFL.COMPANY-CODE = cCompnyCode
+                                 AND PARAMFL.PARAM-STATUS = yes NO-LOCK NO-ERROR.
+            IF AVAILABLE paramfl AND AVAILABLE cinv2 THEN
+            DO:
+                IF CINV2.QTY-ONHAND - CINV2.QTY-COMMITED LE 0 THEN NEXT.
+            END.
         objCategory:getCategoryAllItems(INPUT  ipcUserId,
           INPUT  CINV1.CLASS-CODE,
           INPUT  CINV1.ITEM-NUMBER,
