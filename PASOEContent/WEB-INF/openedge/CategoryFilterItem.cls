@@ -376,9 +376,6 @@ CLASS CategoryFilterItem:
                 ASSIGN 
                   cSearchPattern = '"':U + cSearchPattern + '"':U
                   cQuery         = cInitialQuery + " AND ":U + ttIndexTable.field-name + " BEGINS ":U  +  cSearchPattern  + " No-Lock ":U NO-ERROR.
-                  
-                  MESSAGE "cQuery freeForm" cQuery
-                  VIEW-AS ALERT-BOX.
    
             END. /* WHEN "CHARACTER":U THEN */    
 
@@ -848,20 +845,14 @@ CLASS CategoryFilterItem:
                                            OUTPUT opiStatusCode,
                                            OUTPUT opcError,
                                            OUTPUT oplcSearchData).
-                                           
-     MESSAGE "oplcSearchData" string(oplcSearchData)
-     VIEW-AS ALERT-BOX.
-                                           
-      IF length(oplcSearchData) EQ 0 THEN 
-      DO:
-         MESSAGE "oplcSearchData adentro de length" string(oplcSearchData)
-         VIEW-AS ALERT-BOX.                                  
+                                                                                
+      IF length(oplcSearchData) EQ 2 THEN 
+      DO:                                 
           /* Get multilingual message when no record found for search criteria */
           objCommonSrc:getMessages(INPUT  ipcLangID,
                                    INPUT  ConstantInitializer:c200NoProductFound,                                                              
                                    OUTPUT cError,
-                                   OUTPUT opiStatusCode).
-            
+                                   OUTPUT opiStatusCode).  
           IF cError NE "":U THEN 
             UNDO,THROW NEW AppError(cError,1).
       END. //IF oplcSearchData:LENGTH EQ 0
@@ -928,9 +919,6 @@ CLASS CategoryFilterItem:
                                            OUTPUT opiStatusCode   AS INTEGER,
                                            OUTPUT opcError        AS CHARACTER,
                                            OUTPUT oplcSearchData  AS LONGCHAR):
-                                               
-                                               MESSAGE "Entro a AproxProductSearch Intento 4"
-                                               VIEW-AS ALERT-BOX.
       
     
     DEFINE VARIABLE objCustProductsPrice AS CLASS     ProductPrices     NO-UNDO.
@@ -1060,10 +1048,7 @@ CLASS CategoryFilterItem:
                   //cSearchPattern = '"':U + cSearchPattern + '*':U + '"':U
                   //cPattern = "*" + REPLACE(cSearchPattern, " ", "*") + "*"
                   cSearchPattern = "*" + REPLACE(ipcInputString, " ", "*") + "*"
-                  cQuery         = cInitialQuery + " AND ":U + ' cinv1.DESCRIPTION + cinv1.pack MATCHES "':U  +  cSearchPattern  + '" No-Lock ':U NO-ERROR.
-                  
-                  MESSAGE "cQuery " cQuery
-                  VIEW-AS ALERT-BOX. 
+                  cQuery         = cInitialQuery + " AND ":U + ' cinv1.DESCRIPTION + cinv1.pack MATCHES "':U  +  cSearchPattern  + '" No-Lock ':U NO-ERROR. 
        
         IF NOT ERROR-STATUS:ERROR THEN
         DO:       
@@ -1071,9 +1056,6 @@ CLASS CategoryFilterItem:
 
           hQuery:QUERY-OPEN().         
 
-          //hQuery:GET-FIRST().
-          
-          
           repeat_blk:
           REPEAT:
               
@@ -1400,17 +1382,10 @@ CLASS CategoryFilterItem:
                                                    
           END. /* REPEAT: */
          
-        END. /* IF NOT ERROR-STATUS:ERROR THEN */ 
-            
-      
-    
-    
+        END. /* IF NOT ERROR-STATUS:ERROR THEN */   
     
     ASSIGN 
       oplcSearchData = itemJsonArray:GetJsonText().
- 
-    MESSAGE "oplcSearchData AproxProductSearch" string(oplcSearchData)
-    VIEW-AS ALERT-BOX.   
 
     /* Provide error message, if any */
     CATCH errorObj AS AppError:           
