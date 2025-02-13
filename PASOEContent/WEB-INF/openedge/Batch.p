@@ -26,12 +26,13 @@ DEFINE VARIABLE opcMessage          AS CHARACTER   NO-UNDO.
 DEFINE VARIABLE opcAppToken         AS CHARACTER   NO-UNDO.
 DEFINE VARIABLE opiStatusCode       AS INTEGER     NO-UNDO.
 DEFINE VARIABLE oplcSalespersonData AS LONGCHAR NO-UNDO.
+DEFINE VARIABLE oplcSuggestionListData AS LONGCHAR NO-UNDO.
 
 ObjWrapper = NEW WrapperClass().
 
-FOR EACH CSAMS NO-LOCK:
+FOR EACH CSAMS WHERE CSAMS.SALES-REP-ID = "I89" NO-LOCK:
     
-    objwrapper:fetchCustomers("BATCH",
+   /* objwrapper:fetchCustomers("BATCH",
                               "0", 
                               CSAMS.SALES-REP-ID,
                               "*",
@@ -39,7 +40,15 @@ FOR EACH CSAMS NO-LOCK:
                               opcMessage, 
                               opcAppToken, 
                               opiStatusCode, 
-                              oplcSalespersonData).
+                              oplcSalespersonData). */
+                              
+    objwrapper:fetchCustomerSuggestionsList("Batch",
+                                            "0", 
+                                            CSAMS.SALES-REP-ID, 
+                                            opcMessage, 
+                                            opcAppToken, 
+                                            opiStatusCode, 
+                                            oplcSuggestionListData).                          
 END.    
 
 END PROCEDURE.

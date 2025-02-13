@@ -4900,7 +4900,25 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
       DEFINE VARIABLE opcError          AS CHARACTER NO-UNDO.
       
       EMPTY TEMP-TABLE ttCustShippingAddressSuggestion.
-      EMPTY TEMP-TABLE TTCustomerSuggestionList.                                                                                       
+      EMPTY TEMP-TABLE TTCustomerSuggestionList.
+      
+      /*---------------------------------------------------------------------------*/
+      IF ipcToken EQ "BATCH" THEN 
+        DO:
+          FOR FIRST token WHERE Token.User-ID EQ ipcSalesRepId NO-LOCK:
+            ASSIGN cCompanyCode = Token.Company-ID.   
+          END. 
+          IF cCompanyCode = "" THEN DO:
+              //ASSIGN cCompanyCode = "I". 
+              FIND FIRST cmpny NO-LOCK NO-ERROR.
+              IF AVAILABLE cmpny THEN cCompanyCode = CMPNY.COMPANY-CODE.
+          END. 
+      END. 
+      
+      MESSAGE "ipcToken " ipcToken skip
+      "cCompanyCode " cCompanyCode
+      VIEW-AS ALERT-BOX.                                                                                      
+      /*---------------------------------------------------------------------------*/
                                                     
       FOR FIRST Token WHERE Token.Token = ipcToken NO-LOCK:
       IF CAN-FIND(FIRST CMPNY WHERE CMPNY.COMPANY-CODE = Token.Company-ID NO-LOCK) THEN
@@ -4982,6 +5000,9 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
     END. /* IF NOT AVAILABLE CSAMS.. */ 
   END.
   
+  IF ipcTOKEN NE "BATCH" THEN 
+  DO:
+  
   objTokenMgmt:loggedInUserTokenRenew(INPUT  ipcToken,
                                       INPUT  ipcSalesRepId,
                                       INPUT  ipcLangID, 
@@ -4992,13 +5013,28 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
                                                                                       
   IF opcMessage NE "":U THEN
     UNDO,THROW NEW AppError(opcMessage,1).
-    
+  END.
+  ELSE 
+   opcStatus = "Success". 
   
   /* Checking if status is success */                                          
   IF opcStatus EQ "Success":U THEN
   DO:
-    // TODO -> Implement getting the suggestion list here 
-    
+    // TODO -> Implement getting the suggestion list here
+   /*---------------------------------------------------------------------------*/     
+    IF ipcToken NE "BATCH" THEN 
+    DO:
+      FIND FIRST APIDATA WHERE APIDATA.SALES-REP-ID EQ ipcSalesRepId 
+                           AND APIDATA.Company EQ cCompanyCode 
+                           AND APIDATA.APIName EQ "GetSuggestionList" NO-LOCK NO-ERROR.
+      IF AVAILABLE APIDATA THEN
+      DO:
+         COPY-LOB FROM APIDATA.Data1 TO oplcSuggestionListData.
+         opiStatusCode = 200. 
+         RETURN.
+      END.                         
+    END. 
+    /*---------------------------------------------------------------------------*/
     DEFINE VARIABLE willShowAllCustomers AS LOGICAL NO-UNDO.
     FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID BEGINS "OE-SALES-OPERATOR" AND PARAMFL.PARAM-STATUS NO-LOCK NO-ERROR.
     willShowAllCustomers = AVAIL PARAMFL.
@@ -5091,6 +5127,25 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
       IF cError NE "":U THEN 
         UNDO,THROW NEW AppError(cError,1).        
      END.  //  ELSE
+ /*---------------------------------------------------------------------------*/
+ FIND FIRST APIDATA WHERE APIDATA.SALES-REP-ID EQ ipcSalesRepId 
+                       AND APIDATA.Company EQ cCompanyCode 
+                       AND APIDATA.APIName EQ "GetSuggestionList" NO-LOCK NO-ERROR.
+                       
+  IF NOT AVAILABLE APIDATA THEN 
+     CREATE APIDATA.
+  FIND CURRENT APIDATA EXCLUSIVE-LOCK NO-WAIT NO-ERROR.   
+  IF AVAILABLE APIDATA THEN 
+  DO:   
+      ASSIGN APIDATA.APIName = "GetSuggestionList"
+             APIDATA.Company =  cCompanyCode
+             APIDATA.SALES-REP-ID = ipcSalesRepId
+             APIDATA.LastUpdated  = TODAY.
+     COPY-LOB FROM oplcSuggestionListData TO APIDATA.Data1 NO-ERROR.
+     MESSAGE "oplcSuggestionListData " length(oplcSuggestionListData)
+     VIEW-AS ALERT-BOX.     
+  END.
+ /*---------------------------------------------------------------------------*/
  END.  //IF opcStatus EQ "Success"    
  
  CATCH errorObj AS AppError:       
@@ -5440,7 +5495,7 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
       FIND FIRST APIDATA WHERE APIDATA.SALES-REP-ID EQ ipcSalesRepId 
                            AND APIDATA.Company EQ cCompanyCode 
                            AND APIDATA.APIName EQ "GETCUSTOMER"
-                           /*AND APIDATA.PageNumber = ipcPageNumber*/ NO-LOCK NO-ERROR.
+                           AND APIDATA.PageNumber = ipcPageNumber NO-LOCK NO-ERROR.
       IF AVAILABLE APIDATA THEN
       DO:
          COPY-LOB FROM APIDATA.Data1 TO oplcSalespersonData.
@@ -5746,7 +5801,7 @@ END.
   FIND FIRST APIDATA WHERE APIDATA.SALES-REP-ID EQ ipcSalesRepId 
                        AND APIDATA.Company EQ cCompanyCode 
                        AND APIDATA.APIName EQ "GETCUSTOMER"
-                       /*AND APIDATA.PAGENUMBER EQ Counter*/ NO-LOCK NO-ERROR.
+                       AND APIDATA.PAGENUMBER EQ Counter NO-LOCK NO-ERROR.
                        
   IF NOT AVAILABLE APIDATA THEN 
      CREATE APIDATA.
@@ -5758,7 +5813,7 @@ END.
              APIDATA.Company =  cCompanyCode
              APIDATA.SALES-REP-ID = ipcSalesRepId
              APIDATA.LastUpdated  = TODAY
-             /*APIDATA.PAGENUMBER = Counter*/.
+             APIDATA.PAGENUMBER = Counter.
      COPY-LOB FROM oplcSalespersonData TO APIDATA.Data1 NO-ERROR.     
   END.
  END. // While 
