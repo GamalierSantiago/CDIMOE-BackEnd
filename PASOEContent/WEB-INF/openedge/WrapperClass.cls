@@ -4898,6 +4898,7 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
       DEFINE VARIABLE iarrayIndex       AS INTEGER   NO-UNDO.
       DEFINE VARIABLE lCheck            AS LOGICAL   NO-UNDO.
       DEFINE VARIABLE opcError          AS CHARACTER NO-UNDO.
+      DEFINE BUFFER BUFF-OE-SALES-OPERATOR-2 FOR PARAMFL.
       
       EMPTY TEMP-TABLE ttCustShippingAddressSuggestion.
       EMPTY TEMP-TABLE TTCustomerSuggestionList.
@@ -5036,8 +5037,8 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
     END. 
     /*---------------------------------------------------------------------------*/
     DEFINE VARIABLE willShowAllCustomers AS LOGICAL NO-UNDO.
-    FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID BEGINS "OE-SALES-OPERATOR" AND PARAMFL.PARAM-STATUS NO-LOCK NO-ERROR.
-    willShowAllCustomers = AVAIL PARAMFL.
+    FIND FIRST BUFF-OE-SALES-OPERATOR-2 WHERE BUFF-OE-SALES-OPERATOR-2.PARAM-ID = "OE-SALES-OPERATOR-2" AND BUFF-OE-SALES-OPERATOR-2.PARAM-STATUS NO-LOCK NO-ERROR.
+    willShowAllCustomers = AVAIL BUFF-OE-SALES-OPERATOR-2.
     
     /* Create a list of customers assigned to Salesrep based on CCSMS and shpto*/
     FOR EACH ccsms WHERE CCSMS.CUST-Number BEGINS cCompanyCode NO-LOCK:
@@ -5457,7 +5458,10 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
                                   OUTPUT opcMessage          AS CHARACTER,
                                   OUTPUT opcAppToken         AS CHARACTER,
                                   OUTPUT opiStatusCode       AS INTEGER,
-                                  OUTPUT oplcSalespersonData AS LONGCHAR):      
+                                  OUTPUT oplcSalespersonData AS LONGCHAR):
+                                      
+  MESSAGE "Entro a fetchCustomers"
+  VIEW-AS ALERT-BOX.      
     
   DEFINE VARIABLE ipcSortList       AS CHARACTER INITIAL "*,A-Z,recentvisit,nearme":U.
   DEFINE VARIABLE opcStatus         AS CHARACTER NO-UNDO.
@@ -5781,6 +5785,9 @@ END.
       salesDataJsonObj:Set(INPUT "customers":U,INPUT customerJsonArray) NO-ERROR.
       ASSIGN 
         oplcSalespersonData = salesDataJsonObj:GetJsonText().
+        
+        MESSAGE "Creacion Customer" length(oplcSalespersonData)
+        VIEW-AS ALERT-BOX.
         
     END.  /* IF salesDataJsonObj:Has(INPUT "customers") THEN..*/
     

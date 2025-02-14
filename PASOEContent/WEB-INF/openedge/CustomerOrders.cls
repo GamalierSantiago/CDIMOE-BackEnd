@@ -745,6 +745,7 @@ CLASS CustomerOrders:
     DEFINE VARIABLE lcSalesRep    AS CHARACTER          NO-UNDO.
     DEFINE VARIABLE icCompanyId   AS CHARACTER          NO-UNDO.
     DEFINE VARIABLE iDateRange    AS INTEGER            NO-UNDO.
+    DEFINE BUFFER BUFF-OE-SALES-OPERATOR-2 FOR PARAMFL.
     
    FIND FIRST PARAMFL WHERE PARAMFL.COMPANY-CODE  = ipcCompanyCode
                           AND PARAMFL.PARAM-ID     = "SALE-HISTORY-DAYS":U
@@ -768,8 +769,9 @@ CLASS CustomerOrders:
                             //Gama le anadio el paramfl y la condicion.
                             
     DEFINE VARIABLE willShowAllCustomers AS LOGICAL NO-UNDO.
-    FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID BEGINS "OE-SALES-OPERATOR" AND PARAMFL.PARAM-STATUS NO-LOCK NO-ERROR.
-    willShowAllCustomers = AVAIL PARAMFL.                        
+    FIND FIRST BUFF-OE-SALES-OPERATOR-2 WHERE BUFF-OE-SALES-OPERATOR-2.PARAM-ID = "OE-SALES-OPERATOR-2" 
+                                          AND BUFF-OE-SALES-OPERATOR-2.PARAM-STATUS NO-LOCK NO-ERROR.
+    willShowAllCustomers = AVAIL BUFF-OE-SALES-OPERATOR-2.                       
                                 
     FOR EACH COOHD WHERE COOHD.ORDER-NUMBER BEGINS SUBSTRING (ipcCustNum, 1,1)
                        AND COOHD.CUST-NUMBER  EQ ipcCustNum

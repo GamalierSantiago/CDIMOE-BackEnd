@@ -772,6 +772,7 @@ CLASS SalesmanCustomersData:
     DEFINE VARIABLE objCommonSrc    AS CLASS commonSource             NO-UNDO.
     DEFINE VARIABLE iGraceDays      AS INTEGER                        NO-UNDO.
     objCommonSrc = NEW CommonSource(INPUT cToken).
+    DEFINE BUFFER BUFF-OE-SALES-OPERATOR-2 FOR PARAMFL.
     
     IF VALID-OBJECT(objCommonSrc) THEN DO:
       
@@ -797,8 +798,8 @@ CLASS SalesmanCustomersData:
         //Gama modifico para llamar al paramfl y en base a eso se condicione o no el For each.
         
         DEFINE VARIABLE willShowAllCustomers AS LOGICAL NO-UNDO.
-    FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID = "OE-SALES-OPERATOR-2" AND PARAMFL.PARAM-STATUS NO-LOCK NO-ERROR.
-    willShowAllCustomers = AVAIL PARAMFL.
+        FIND FIRST BUFF-OE-SALES-OPERATOR-2 WHERE BUFF-OE-SALES-OPERATOR-2.PARAM-ID = "OE-SALES-OPERATOR-2" AND BUFF-OE-SALES-OPERATOR-2.PARAM-STATUS NO-LOCK NO-ERROR.
+        willShowAllCustomers = AVAIL BUFF-OE-SALES-OPERATOR-2.
         
         FOR FIRST CCSMS WHERE CCSMS.CUST-NUMBER EQ ipcCustNum NO-LOCK:
             /* FOR EACH COPAR NO-LOCK 
@@ -1534,7 +1535,10 @@ CLASS SalesmanCustomersData:
                                      OUTPUT TABLE ttCustAmountOverdue,
                                      OUTPUT TABLE ttCustBillingAddress,
                                      OUTPUT cError          AS CHARACTER,
-                                     OUTPUT opiStatusCode   AS INTEGER):    
+                                     OUTPUT opiStatusCode   AS INTEGER):
+                                         
+                                         MESSAGE "Entro a getAllCustomers"
+                                         VIEW-AS ALERT-BOX.    
     
     DEFINE VARIABLE lCustomerExists AS LOGICAL NO-UNDO.
     ASSIGN lcSalesrep = ipcSalesRepId.  
@@ -1748,6 +1752,9 @@ CLASS SalesmanCustomersData:
                                           OUTPUT TABLE ttCustBillingAddress,
                                           OUTPUT cError        AS CHARACTER,
                                           OUTPUT opiStatusCode AS INTEGER):
+                                              
+                                              MESSAGE "Entro a fillAllCustomersData"
+                                              VIEW-AS ALERT-BOX.
  
     DEFINE VARIABLE deTotalAmtOverdue AS DECIMAL   NO-UNDO.
     DEFINE VARIABLE deAvailCredit     AS DECIMAL   NO-UNDO.
@@ -1782,6 +1789,8 @@ CLASS SalesmanCustomersData:
     
     ASSIGN lcSalesId = SUBSTRING(ipcSalesRepId, 2).
     
+    DEFINE BUFFER BUFF-single-customer-view FOR PARAMFL.
+    DEFINE BUFFER BUFF-OE-SALES-OPERATOR-2 FOR PARAMFL.
    
           
     //FOR EACH CCSMS WHERE (CCSMS.SALES-REP-ID EQ ipcSalesRepId OR CCSMS.SALES-REP-ID = "**") NO-LOCK USE-INDEX SALES-REP-ID:
@@ -1791,11 +1800,29 @@ CLASS SalesmanCustomersData:
     END. */
     
     DEFINE VARIABLE willShowAllCustomers AS LOGICAL NO-UNDO.
-    FIND FIRST PARAMFL WHERE PARAMFL.PARAM-ID BEGINS "OE-SALES-OPERATOR" AND PARAMFL.PARAM-STATUS NO-LOCK NO-ERROR.
-    willShowAllCustomers = AVAIL PARAMFL.
+    
+    FIND FIRST BUFF-OE-SALES-OPERATOR-2 WHERE BUFF-OE-SALES-OPERATOR-2.PARAM-ID = "OE-SALES-OPERATOR-2" 
+                                          AND BUFF-OE-SALES-OPERATOR-2.PARAM-STATUS NO-LOCK NO-ERROR.
+                                          
+    ASSIGN willShowAllCustomers = AVAIL BUFF-OE-SALES-OPERATOR-2.
+    
+    DEFINE VARIABLE willShowSingleCustomer AS LOGICAL NO-UNDO.
+    
+    FIND FIRST BUFF-single-customer-view WHERE BUFF-single-customer-view.PARAM-ID = "single-customer-view-MobileApp" 
+                                           AND BUFF-single-customer-view.PARAM-STATUS 
+                                           AND BUFF-single-customer-view.PARAM-VALUE1 <> "" NO-LOCK NO-ERROR.
+                                           
+    ASSIGN willShowSingleCustomer = AVAIL BUFF-single-customer-view.
     
     /* Create a list of customers assigned to Salesrep based on CCSMS and shpto*/
-    FOR EACH ccsms WHERE CCSMS.CUST-Number BEGINS ipcCompanyID NO-LOCK:
+    FOR EACH ccsms WHERE (CCSMS.CUST-Number BEGINS ipcCompanyID AND NOT willShowSingleCustomer)
+                      OR (CCSMS.CUST-Number = BUFF-single-customer-view.PARAM-VALUE1 AND willShowSingleCustomer) NO-LOCK:
+                          
+                          MESSAGE "Adentro del for each Genesis de la creacion" skip
+                          "CCSMS.CUST-Number " CCSMS.CUST-Number skip
+                          "ipcSalesRepId " ipcSalesRepId
+                          VIEW-AS ALERT-BOX.
+                          
        IF ccsms.SALES-REP-ID NE ipcSalesRepId THEN
        DO: 
           IF  willShowAllCustomers THEN DO:
@@ -1806,8 +1833,12 @@ CLASS SalesmanCustomersData:
               END.
           END.
           ELSE DO:
+              MESSAGE "Entro al ELSE DO"
+              VIEW-AS ALERT-BOX.
             FOR EACH shpto WHERE shpto.cust-number  = ccsms.cust-number
                          AND ((shpto.SALES-REP-ID = ipcSalesRepId AND NOT willShowAllCustomers) OR willShowAllCustomers) NO-LOCK BREAK BY shpto.cust-number:
+                             MESSAGE "shpto.cust-number " shpto.cust-number
+                             VIEW-AS ALERT-BOX.
              IF FIRST-OF(shpto.cust-number) THEN DO:
                  FIND ttSalesManCustList WHERE ttSalesManCustList.cust-num = CCSMS.CUST-NUMBER NO-LOCK NO-ERROR.
                  IF NOT  AVAILABLE ttSalesManCustList THEN DO:
@@ -1820,11 +1851,17 @@ CLASS SalesmanCustomersData:
        END.
     ELSE
     DO:
+        MESSAGE "Entro al ELSE Supremo"
+        VIEW-AS ALERT-BOX.
         FIND FIRST ttSalesManCustList WHERE ttSalesManCustList.cust-num EQ ccsms.cust-number NO-ERROR.
         IF NOT AVAILABLE ttSalesManCustList THEN 
         DO:
            CREATE ttSalesManCustList.
            ASSIGN ttSalesManCustList.cust-num = ccsms.cust-number.
+           MESSAGE "El ELse del NE" skip
+           "ttSalesManCustList.cust-num " ttSalesManCustList.cust-num skip
+           "ccsms.cust-number " ccsms.cust-number
+           VIEW-AS ALERT-BOX.
         END.   
         
     END.
@@ -1837,6 +1874,9 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
            
    // FOR EACH CCSMS WHERE (CCSMS.SALES-REP-ID EQ ipcSalesRepId AND CCSMS.CUST-Number BEGINS ipcCompanyID) NO-LOCK:
       FOR EACH ttSalesManCustList NO-LOCK:
+          MESSAGE "FOR EACH ttSalesManCustList" skip
+          "ttSalesManCustList.cust-num " ttSalesManCustList.cust-num
+          VIEW-AS ALERT-BOX.
         FIND FIRST CCSMS WHERE CCSMS.CUST-NUMBER EQ  ttSalesManCustList.cust-num NO-LOCK NO-ERROR.
         IF NOT AVAILABLE CCSMS THEN NEXT.                                                                
       FOR LAST COOHD WHERE COOHD.CUST-NUMBER EQ CCSMS.CUST-NUMBER NO-LOCK USE-INDEX order-date:
@@ -1884,13 +1924,15 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
         
         IF Counter MODULO 20 = 0 THEN DO:
         ASSIGN PageNumber = PageNumber + 1.
-        MESSAGE "PageNumber " PageNumber
-        VIEW-AS ALERT-BOX.
         END. //IF Counter MODULO 20 
        ASSIGN deCusSaleAmt90day = 0.0.       
       /* Logic to get the total sales of a customer */
       
-      
+      MESSAGE "Creacion" skip
+              "Counter " Counter skip
+              "PageNumber " PageNumber skip
+              "CCSMS.CUST-NUMBER " CCSMS.CUST-NUMBER
+      VIEW-AS ALERT-BOX.
          
       //Gama Cambio el For each del CSAHF para que ponga bien los datos si el paramfl esta prendido
           
@@ -1957,7 +1999,7 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
                FILE-INFO:FILE-NAME =  FILE-INFO:FILE-NAME + "\" + "customer" NO-ERROR.
       END.         
         
-      IF FILE-INFO:FULL-PATHNAME NE ? THEN
+      /*IF FILE-INFO:FULL-PATHNAME NE ? THEN
       DO:
          INPUT FROM OS-DIR(FILE-INFO:FULL-PATHNAME).
          REPEAT:
@@ -1970,7 +2012,7 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
          END. /* REPEAT */  
               
       END. /* IF FILE-INFO:FULL-PATHNAME NE ? THEN */  
-      ELSE
+      ELSE*/
       ASSIGN ttCustomer.customer_picture  = "".
     
       /* Get the billing address of the customer if exists */

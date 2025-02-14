@@ -30,9 +30,9 @@ DEFINE VARIABLE oplcSuggestionListData AS LONGCHAR NO-UNDO.
 
 ObjWrapper = NEW WrapperClass().
 
-FOR EACH CSAMS WHERE CSAMS.SALES-REP-ID = "I89" NO-LOCK:
+FOR EACH CSAMS WHERE CSAMS.SALES-REP-ID = "I35" NO-LOCK:
     
-   /* objwrapper:fetchCustomers("BATCH",
+    objwrapper:fetchCustomers("BATCH",
                               "0", 
                               CSAMS.SALES-REP-ID,
                               "*",
@@ -40,7 +40,7 @@ FOR EACH CSAMS WHERE CSAMS.SALES-REP-ID = "I89" NO-LOCK:
                               opcMessage, 
                               opcAppToken, 
                               opiStatusCode, 
-                              oplcSalespersonData). */
+                              oplcSalespersonData).
                               
     objwrapper:fetchCustomerSuggestionsList("Batch",
                                             "0", 
