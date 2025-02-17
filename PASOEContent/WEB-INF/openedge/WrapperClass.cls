@@ -5458,11 +5458,9 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
                                   OUTPUT opcMessage          AS CHARACTER,
                                   OUTPUT opcAppToken         AS CHARACTER,
                                   OUTPUT opiStatusCode       AS INTEGER,
+                                  OUTPUT oplAvailablePaging  AS LOGICAL,
                                   OUTPUT oplcSalespersonData AS LONGCHAR):
-                                      
-  MESSAGE "Entro a fetchCustomers"
-  VIEW-AS ALERT-BOX.      
-    
+ 
   DEFINE VARIABLE ipcSortList       AS CHARACTER INITIAL "*,A-Z,recentvisit,nearme":U.
   DEFINE VARIABLE opcStatus         AS CHARACTER NO-UNDO.
   DEFINE VARIABLE cCompanyCode      AS CHARACTER NO-UNDO.
@@ -5476,6 +5474,13 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
   DEFINE VARIABLE customerJsonArray AS CLASS     JsonArray             NO-UNDO.
   DEFINE VARIABLE blankJsonArray    AS CLASS     JsonArray             NO-UNDO.
   DEFINE VARIABLE lchar             AS LONGCHAR NO-UNDO.
+  DEFINE BUFFER BUFF-single-customer-view FOR PARAMFL.
+  
+  FIND FIRST BUFF-single-customer-view WHERE BUFF-single-customer-view.PARAM-ID = "single-customer-view-MobileApp" 
+                                           AND BUFF-single-customer-view.PARAM-STATUS 
+                                           AND BUFF-single-customer-view.PARAM-VALUE1 <> "" NO-LOCK NO-ERROR.
+  IF AVAILABLE BUFF-single-customer-view THEN
+  ASSIGN oplAvailablePaging = YES. 
   
   FOR FIRST Token WHERE Token.Token = ipcToken NO-LOCK:
       IF CAN-FIND(FIRST CMPNY WHERE CMPNY.COMPANY-CODE = Token.Company-ID NO-LOCK) THEN

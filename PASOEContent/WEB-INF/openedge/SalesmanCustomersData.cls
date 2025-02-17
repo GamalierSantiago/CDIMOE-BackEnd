@@ -1752,9 +1752,6 @@ CLASS SalesmanCustomersData:
                                           OUTPUT TABLE ttCustBillingAddress,
                                           OUTPUT cError        AS CHARACTER,
                                           OUTPUT opiStatusCode AS INTEGER):
-                                              
-                                              MESSAGE "Entro a fillAllCustomersData"
-                                              VIEW-AS ALERT-BOX.
  
     DEFINE VARIABLE deTotalAmtOverdue AS DECIMAL   NO-UNDO.
     DEFINE VARIABLE deAvailCredit     AS DECIMAL   NO-UNDO.
@@ -1818,11 +1815,6 @@ CLASS SalesmanCustomersData:
     FOR EACH ccsms WHERE (CCSMS.CUST-Number BEGINS ipcCompanyID AND NOT willShowSingleCustomer)
                       OR (CCSMS.CUST-Number = BUFF-single-customer-view.PARAM-VALUE1 AND willShowSingleCustomer) NO-LOCK:
                           
-                          MESSAGE "Adentro del for each Genesis de la creacion" skip
-                          "CCSMS.CUST-Number " CCSMS.CUST-Number skip
-                          "ipcSalesRepId " ipcSalesRepId
-                          VIEW-AS ALERT-BOX.
-                          
        IF ccsms.SALES-REP-ID NE ipcSalesRepId THEN
        DO: 
           IF  willShowAllCustomers THEN DO:
@@ -1833,8 +1825,6 @@ CLASS SalesmanCustomersData:
               END.
           END.
           ELSE DO:
-              MESSAGE "Entro al ELSE DO"
-              VIEW-AS ALERT-BOX.
             FOR EACH shpto WHERE shpto.cust-number  = ccsms.cust-number
                          AND ((shpto.SALES-REP-ID = ipcSalesRepId AND NOT willShowAllCustomers) OR willShowAllCustomers) NO-LOCK BREAK BY shpto.cust-number:
                              MESSAGE "shpto.cust-number " shpto.cust-number
@@ -1851,17 +1841,11 @@ CLASS SalesmanCustomersData:
        END.
     ELSE
     DO:
-        MESSAGE "Entro al ELSE Supremo"
-        VIEW-AS ALERT-BOX.
         FIND FIRST ttSalesManCustList WHERE ttSalesManCustList.cust-num EQ ccsms.cust-number NO-ERROR.
         IF NOT AVAILABLE ttSalesManCustList THEN 
         DO:
            CREATE ttSalesManCustList.
            ASSIGN ttSalesManCustList.cust-num = ccsms.cust-number.
-           MESSAGE "El ELse del NE" skip
-           "ttSalesManCustList.cust-num " ttSalesManCustList.cust-num skip
-           "ccsms.cust-number " ccsms.cust-number
-           VIEW-AS ALERT-BOX.
         END.   
         
     END.
@@ -1874,9 +1858,6 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
            
    // FOR EACH CCSMS WHERE (CCSMS.SALES-REP-ID EQ ipcSalesRepId AND CCSMS.CUST-Number BEGINS ipcCompanyID) NO-LOCK:
       FOR EACH ttSalesManCustList NO-LOCK:
-          MESSAGE "FOR EACH ttSalesManCustList" skip
-          "ttSalesManCustList.cust-num " ttSalesManCustList.cust-num
-          VIEW-AS ALERT-BOX.
         FIND FIRST CCSMS WHERE CCSMS.CUST-NUMBER EQ  ttSalesManCustList.cust-num NO-LOCK NO-ERROR.
         IF NOT AVAILABLE CCSMS THEN NEXT.                                                                
       FOR LAST COOHD WHERE COOHD.CUST-NUMBER EQ CCSMS.CUST-NUMBER NO-LOCK USE-INDEX order-date:
@@ -1927,12 +1908,6 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
         END. //IF Counter MODULO 20 
        ASSIGN deCusSaleAmt90day = 0.0.       
       /* Logic to get the total sales of a customer */
-      
-      MESSAGE "Creacion" skip
-              "Counter " Counter skip
-              "PageNumber " PageNumber skip
-              "CCSMS.CUST-NUMBER " CCSMS.CUST-NUMBER
-      VIEW-AS ALERT-BOX.
          
       //Gama Cambio el For each del CSAHF para que ponga bien los datos si el paramfl esta prendido
           
