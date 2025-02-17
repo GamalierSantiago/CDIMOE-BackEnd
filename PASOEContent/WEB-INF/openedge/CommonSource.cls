@@ -294,8 +294,17 @@ CLASS CommonSource:
   METHOD PUBLIC VOID getCompanyCode(OUTPUT TABLE ttCompany,
                                     OUTPUT cError AS CHARACTER):
                                         
+    DEFINE BUFFER buffOnlyOneCompany FOR paramfl.
+    DEFINE VARIABLE OnlyOneCompany AS LOGICAL INITIAL NO.
     
-    FOR EACH CMPNY NO-LOCK:
+    FIND buffOnlyOneCompany WHERE buffOnlyOneCompany.PARAM-ID = "Only-One-Company-MobileApp"
+                              AND buffOnlyOneCompany.PARAM-STATUS = YES
+                              AND buffOnlyOneCompany.PARAM-VALUE1 <> "" NO-LOCK NO-ERROR.
+                              
+    IF AVAILABLE buffOnlyOneCompany THEN
+        ASSIGN OnlyOneCompany = YES.                                    
+    
+    FOR EACH CMPNY WHERE (CMPNY.COMPANY-CODE = buffOnlyOneCompany.PARAM-VALUE1 AND OnlyOneCompany) OR NOT OnlyOneCompany NO-LOCK:
           
       CREATE ttCompany.
       ASSIGN 

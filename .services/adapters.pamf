@@ -410,9 +410,10 @@
       &lt;metadata:source/>&#xD;
       &lt;metadata:target>&#xD;
         &lt;metadata:mappablesData displayName=&quot;error_message&quot; expressionName=&quot;${json.object['response'].string['error_message']}&quot; mappableType=&quot;MANUAL&quot;/>&#xD;
-        &lt;metadata:mappablesData displayName=&quot;data&quot; expressionName=&quot;${json.object['response'].object['data']}&quot; mappableType=&quot;MANUAL&quot;/>&#xD;
-        &lt;metadata:mappablesData displayName=&quot;status_code&quot; expressionName=&quot;${json.object['response'].integervalue['status_code']}&quot; mappableType=&quot;MANUAL&quot;/>&#xD;
         &lt;metadata:mappablesData displayName=&quot;token&quot; expressionName=&quot;${json.object['response'].string['token']}&quot; mappableType=&quot;MANUAL&quot;/>&#xD;
+        &lt;metadata:mappablesData displayName=&quot;status_code&quot; expressionName=&quot;${json.object['response'].integervalue['status_code']}&quot; mappableType=&quot;MANUAL&quot;/>&#xD;
+        &lt;metadata:mappablesData displayName=&quot;data&quot; expressionName=&quot;${json.object['response'].object['data']}&quot; mappableType=&quot;MANUAL&quot;/>&#xD;
+        &lt;metadata:mappablesData displayName=&quot;available_paging&quot; expressionName=&quot;${json.object['response'].boolean['available_paging']}&quot; mappableType=&quot;MANUAL&quot;/>&#xD;
       &lt;/metadata:target>&#xD;
     &lt;/metadata:mapOutput>&#xD;
   &lt;/metadata:toolingMetadata>&#xD;
@@ -425,9 +426,10 @@
   &lt;/mapping:mapInput>&#xD;
   &lt;mapping:mapOutput>&#xD;
     &lt;mapping:rule action=&quot;None&quot; resource=&quot;&quot; source=&quot;${idl.param['opcMessage']}&quot; target=&quot;${json.object['response'].string['error_message']}&quot; type=&quot;INTERFACE_PARAM&quot;/>&#xD;
-    &lt;mapping:rule action=&quot;None&quot; resource=&quot;&quot; source=&quot;${idl.param['oplcSalespersonData']}&quot; target=&quot;${json.object['response'].object['data']}&quot; type=&quot;INTERFACE_PARAM&quot;/>&#xD;
-    &lt;mapping:rule action=&quot;None&quot; resource=&quot;&quot; source=&quot;${idl.param['opiStatusCode']}&quot; target=&quot;${json.object['response'].integervalue['status_code']}&quot; type=&quot;INTERFACE_PARAM&quot;/>&#xD;
     &lt;mapping:rule action=&quot;None&quot; resource=&quot;&quot; source=&quot;${idl.param['opcAppToken']}&quot; target=&quot;${json.object['response'].string['token']}&quot; type=&quot;INTERFACE_PARAM&quot;/>&#xD;
+    &lt;mapping:rule action=&quot;None&quot; resource=&quot;&quot; source=&quot;${idl.param['opiStatusCode']}&quot; target=&quot;${json.object['response'].integervalue['status_code']}&quot; type=&quot;INTERFACE_PARAM&quot;/>&#xD;
+    &lt;mapping:rule action=&quot;None&quot; resource=&quot;&quot; source=&quot;${idl.param['oplcSalespersonData']}&quot; target=&quot;${json.object['response'].object['data']}&quot; type=&quot;INTERFACE_PARAM&quot;/>&#xD;
+    &lt;mapping:rule action=&quot;None&quot; resource=&quot;&quot; source=&quot;${idl.param['oplAvailablePaging']}&quot; target=&quot;${json.object['response'].boolean['available_paging']}&quot; type=&quot;INTERFACE_PARAM&quot;/>&#xD;
   &lt;/mapping:mapOutput>&#xD;
   &lt;mapping:mapFault name=&quot;default_fault&quot;/>&#xD;
 &lt;/mapping:messageMapping></lm:properties>

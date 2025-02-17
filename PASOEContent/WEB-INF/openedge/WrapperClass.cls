@@ -5479,8 +5479,13 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
   FIND FIRST BUFF-single-customer-view WHERE BUFF-single-customer-view.PARAM-ID = "single-customer-view-MobileApp" 
                                            AND BUFF-single-customer-view.PARAM-STATUS 
                                            AND BUFF-single-customer-view.PARAM-VALUE1 <> "" NO-LOCK NO-ERROR.
-  IF AVAILABLE BUFF-single-customer-view THEN
-  ASSIGN oplAvailablePaging = YES. 
+  IF AVAILABLE BUFF-single-customer-view THEN DO:
+      
+    ASSIGN oplAvailablePaging = NO.
+  END.
+  ELSE DO: 
+    ASSIGN oplAvailablePaging = YES. 
+  END. 
   
   FOR FIRST Token WHERE Token.Token = ipcToken NO-LOCK:
       IF CAN-FIND(FIRST CMPNY WHERE CMPNY.COMPANY-CODE = Token.Company-ID NO-LOCK) THEN
