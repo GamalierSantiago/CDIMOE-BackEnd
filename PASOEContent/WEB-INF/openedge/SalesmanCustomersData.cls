@@ -1785,6 +1785,7 @@ CLASS SalesmanCustomersData:
     
     DEFINE BUFFER BUFF-single-customer-view FOR PARAMFL.
     DEFINE BUFFER BUFF-OE-SALES-OPERATOR-2 FOR PARAMFL.
+    DEFINE BUFFER BUFF-Enable-Paging FOR PARAMFL.
    
           
     //FOR EACH CCSMS WHERE (CCSMS.SALES-REP-ID EQ ipcSalesRepId OR CCSMS.SALES-REP-ID = "**") NO-LOCK USE-INDEX SALES-REP-ID:
@@ -1849,7 +1850,10 @@ END.
   
     
 DEFINE VARIABLE Counter AS INTEGER NO-UNDO INITIAL 0.
-DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.     
+DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
+
+FIND FIRST BUFF-Enable-Paging WHERE BUFF-Enable-Paging.PARAM-ID = "Enable-Paging-MobileApp"
+                                AND BUFF-Enable-Paging.PARAM-STATUS NO-LOCK NO-ERROR.     
            
    // FOR EACH CCSMS WHERE (CCSMS.SALES-REP-ID EQ ipcSalesRepId AND CCSMS.CUST-Number BEGINS ipcCompanyID) NO-LOCK:
       FOR EACH ttSalesManCustList NO-LOCK:
@@ -1895,7 +1899,7 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
         ttCustomer.poRequired                = IF CCSMS.ORG-TYPE MATCHES "P" THEN TRUE ELSE FALSE
         ttCustomer.number_of_days            = iNoOfDays 
         ttCustomer.discount                  = opcDiscountPercent
-        ttCustomer.pageNumber                = PageNumber
+        ttCustomer.pageNumber                = IF NOT AVAILABLE BUFF-Enable-Paging THEN PageNumber ELSE 1
         no-error.
         
         IF Counter MODULO 20 = 0 THEN DO:

@@ -4909,16 +4909,11 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
           FOR FIRST token WHERE Token.User-ID EQ ipcSalesRepId NO-LOCK:
             ASSIGN cCompanyCode = Token.Company-ID.   
           END. 
-          IF cCompanyCode = "" THEN DO:
-              //ASSIGN cCompanyCode = "I". 
+          IF cCompanyCode = "" THEN DO: 
               FIND FIRST cmpny NO-LOCK NO-ERROR.
               IF AVAILABLE cmpny THEN cCompanyCode = CMPNY.COMPANY-CODE.
           END. 
-      END. 
-      
-      MESSAGE "ipcToken " ipcToken skip
-      "cCompanyCode " cCompanyCode
-      VIEW-AS ALERT-BOX.                                                                                      
+      END.                                                                                       
       /*---------------------------------------------------------------------------*/
                                                     
       FOR FIRST Token WHERE Token.Token = ipcToken NO-LOCK:
@@ -5142,9 +5137,7 @@ METHOD PUBLIC VOID fetchCustomerSuggestionsList(INPUT ipcToken             AS CH
              APIDATA.Company =  cCompanyCode
              APIDATA.SALES-REP-ID = ipcSalesRepId
              APIDATA.LastUpdated  = TODAY.
-     COPY-LOB FROM oplcSuggestionListData TO APIDATA.Data1 NO-ERROR.
-     MESSAGE "oplcSuggestionListData " length(oplcSuggestionListData)
-     VIEW-AS ALERT-BOX.     
+     COPY-LOB FROM oplcSuggestionListData TO APIDATA.Data1 NO-ERROR.     
   END.
  /*---------------------------------------------------------------------------*/
  END.  //IF opcStatus EQ "Success"    
@@ -5476,6 +5469,7 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
   DEFINE VARIABLE lchar             AS LONGCHAR NO-UNDO.
   DEFINE BUFFER BUFF-single-customer-view FOR PARAMFL.
   DEFINE BUFFER BUFF-Only-One-Company FOR PARAMFL.
+  DEFINE BUFFER BUFF-Enable-Paging FOR PARAMFL.
   
   FIND FIRST BUFF-Only-One-Company WHERE BUFF-Only-One-Company.PARAM-ID = "Only-One-Company-MobileApp"
                                      AND BUFF-Only-One-Company.PARAM-STATUS
@@ -5509,9 +5503,13 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
                                            AND BUFF-single-customer-view.PARAM-VALUE1 <> "" 
                                            AND BUFF-single-customer-view.COMPANY-CODE = cCompanyCode NO-LOCK NO-ERROR.
                                            
-  IF AVAILABLE BUFF-single-customer-view THEN DO:
+  FIND FIRST BUFF-Enable-Paging WHERE BUFF-Enable-Paging.PARAM-ID = "Enable-Paging-MobileApp"
+                                  AND BUFF-Enable-Paging.PARAM-STATUS NO-LOCK NO-ERROR.
+                                           
+  IF AVAILABLE BUFF-single-customer-view OR AVAILABLE BUFF-Enable-Paging THEN DO:
       
-    ASSIGN oplAvailablePaging = NO.
+    ASSIGN oplAvailablePaging = NO
+           ipcPageNumber = 1.
   END.
   ELSE DO: 
     ASSIGN oplAvailablePaging = YES. 
