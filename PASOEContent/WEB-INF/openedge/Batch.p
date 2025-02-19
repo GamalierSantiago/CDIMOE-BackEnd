@@ -25,12 +25,14 @@ DEFINE VARIABLE ObjWrapper          AS  CLASS     WrapperClass NO-UNDO.
 DEFINE VARIABLE opcMessage          AS CHARACTER   NO-UNDO.
 DEFINE VARIABLE opcAppToken         AS CHARACTER   NO-UNDO.
 DEFINE VARIABLE opiStatusCode       AS INTEGER     NO-UNDO.
+DEFINE VARIABLE oplAvailablePaging  AS LOGICAL     NO-UNDO. 
 DEFINE VARIABLE oplcSalespersonData AS LONGCHAR NO-UNDO.
+
 DEFINE VARIABLE oplcSuggestionListData AS LONGCHAR NO-UNDO.
 
 ObjWrapper = NEW WrapperClass().
 
-FOR EACH CSAMS WHERE CSAMS.SALES-REP-ID = "I35" NO-LOCK:
+FOR EACH CSAMS WHERE CSAMS.SALES-REP-ID <> "I35" NO-LOCK:
     
     objwrapper:fetchCustomers("BATCH",
                               "0", 
@@ -39,7 +41,8 @@ FOR EACH CSAMS WHERE CSAMS.SALES-REP-ID = "I35" NO-LOCK:
                               0,
                               opcMessage, 
                               opcAppToken, 
-                              opiStatusCode, 
+                              opiStatusCode,
+                              oplAvailablePaging, 
                               oplcSalespersonData).
                               
     objwrapper:fetchCustomerSuggestionsList("Batch",

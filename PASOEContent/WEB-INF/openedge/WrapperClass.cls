@@ -5475,17 +5475,11 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
   DEFINE VARIABLE blankJsonArray    AS CLASS     JsonArray             NO-UNDO.
   DEFINE VARIABLE lchar             AS LONGCHAR NO-UNDO.
   DEFINE BUFFER BUFF-single-customer-view FOR PARAMFL.
+  DEFINE BUFFER BUFF-Only-One-Company FOR PARAMFL.
   
-  FIND FIRST BUFF-single-customer-view WHERE BUFF-single-customer-view.PARAM-ID = "single-customer-view-MobileApp" 
-                                           AND BUFF-single-customer-view.PARAM-STATUS 
-                                           AND BUFF-single-customer-view.PARAM-VALUE1 <> "" NO-LOCK NO-ERROR.
-  IF AVAILABLE BUFF-single-customer-view THEN DO:
-      
-    ASSIGN oplAvailablePaging = NO.
-  END.
-  ELSE DO: 
-    ASSIGN oplAvailablePaging = YES. 
-  END. 
+  FIND FIRST BUFF-Only-One-Company WHERE BUFF-Only-One-Company.PARAM-ID = "Only-One-Company-MobileApp"
+                                     AND BUFF-Only-One-Company.PARAM-STATUS
+                                     AND BUFF-Only-One-Company.PARAM-VALUE1 <> "" NO-LOCK NO-ERROR.  
   
   FOR FIRST Token WHERE Token.Token = ipcToken NO-LOCK:
       IF CAN-FIND(FIRST CMPNY WHERE CMPNY.COMPANY-CODE = Token.Company-ID NO-LOCK) THEN
@@ -5494,15 +5488,34 @@ METHOD PUBLIC VOID fetchCustomers(INPUT  ipcToken            AS CHARACTER,
   
   IF ipcToken EQ "BATCH" THEN 
   DO:
-      FOR FIRST token WHERE Token.User-ID EQ ipcSalesRepId NO-LOCK:
-        ASSIGN cCompanyCode = Token.Company-ID.   
-      END. 
-      IF cCompanyCode = "" THEN DO:
-      //ASSIGN cCompanyCode = "I". 
-      FIND FIRST cmpny NO-LOCK NO-ERROR.
-      IF AVAILABLE cmpny THEN cCompanyCode = CMPNY.COMPANY-CODE.
+      IF NOT AVAILABLE BUFF-Only-One-Company THEN 
+      DO:
+          FOR FIRST token WHERE Token.User-ID EQ ipcSalesRepId NO-LOCK:
+            ASSIGN cCompanyCode = Token.Company-ID.   
+          END. 
+          IF cCompanyCode = "" THEN DO: 
+          FIND FIRST cmpny NO-LOCK NO-ERROR.
+          IF AVAILABLE cmpny THEN cCompanyCode = CMPNY.COMPANY-CODE.
+          END.
+      END.
+      ELSE 
+      DO:
+          ASSIGN cCompanyCode = BUFF-Only-One-Company.PARAM-VALUE1.
       END. 
   END. 
+  
+  FIND FIRST BUFF-single-customer-view WHERE BUFF-single-customer-view.PARAM-ID = "single-customer-view-MobileApp" 
+                                           AND BUFF-single-customer-view.PARAM-STATUS 
+                                           AND BUFF-single-customer-view.PARAM-VALUE1 <> "" 
+                                           AND BUFF-single-customer-view.COMPANY-CODE = cCompanyCode NO-LOCK NO-ERROR.
+                                           
+  IF AVAILABLE BUFF-single-customer-view THEN DO:
+      
+    ASSIGN oplAvailablePaging = NO.
+  END.
+  ELSE DO: 
+    ASSIGN oplAvailablePaging = YES. 
+  END.
   
   IF ipcToken NE "BATCH" THEN 
   DO:
@@ -5795,9 +5808,6 @@ END.
       salesDataJsonObj:Set(INPUT "customers":U,INPUT customerJsonArray) NO-ERROR.
       ASSIGN 
         oplcSalespersonData = salesDataJsonObj:GetJsonText().
-        
-        MESSAGE "Creacion Customer" length(oplcSalespersonData)
-        VIEW-AS ALERT-BOX.
         
     END.  /* IF salesDataJsonObj:Has(INPUT "customers") THEN..*/
     

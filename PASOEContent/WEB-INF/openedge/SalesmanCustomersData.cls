@@ -1536,10 +1536,7 @@ CLASS SalesmanCustomersData:
                                      OUTPUT TABLE ttCustBillingAddress,
                                      OUTPUT cError          AS CHARACTER,
                                      OUTPUT opiStatusCode   AS INTEGER):
-                                         
-                                         MESSAGE "Entro a getAllCustomers"
-                                         VIEW-AS ALERT-BOX.    
-    
+
     DEFINE VARIABLE lCustomerExists AS LOGICAL NO-UNDO.
     ASSIGN lcSalesrep = ipcSalesRepId.  
                                                                                                                                                       
@@ -1827,8 +1824,6 @@ CLASS SalesmanCustomersData:
           ELSE DO:
             FOR EACH shpto WHERE shpto.cust-number  = ccsms.cust-number
                          AND ((shpto.SALES-REP-ID = ipcSalesRepId AND NOT willShowAllCustomers) OR willShowAllCustomers) NO-LOCK BREAK BY shpto.cust-number:
-                             MESSAGE "shpto.cust-number " shpto.cust-number
-                             VIEW-AS ALERT-BOX.
              IF FIRST-OF(shpto.cust-number) THEN DO:
                  FIND ttSalesManCustList WHERE ttSalesManCustList.cust-num = CCSMS.CUST-NUMBER NO-LOCK NO-ERROR.
                  IF NOT  AVAILABLE ttSalesManCustList THEN DO:
@@ -1973,8 +1968,8 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
                Cdomain             = PARAMFL.PARAM-VALUE2
                FILE-INFO:FILE-NAME =  FILE-INFO:FILE-NAME + "\" + "customer" NO-ERROR.
       END.         
-        
-      /*IF FILE-INFO:FULL-PATHNAME NE ? THEN
+      // Comment for the batch to load clients to APIDATA in Impec.  
+      IF FILE-INFO:FULL-PATHNAME NE ? THEN
       DO:
          INPUT FROM OS-DIR(FILE-INFO:FULL-PATHNAME).
          REPEAT:
@@ -1987,7 +1982,7 @@ DEFINE VARIABLE PageNumber AS INTEGER NO-UNDO INITIAL 1.
          END. /* REPEAT */  
               
       END. /* IF FILE-INFO:FULL-PATHNAME NE ? THEN */  
-      ELSE*/
+      ELSE
       ASSIGN ttCustomer.customer_picture  = "".
     
       /* Get the billing address of the customer if exists */
