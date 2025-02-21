@@ -1207,11 +1207,11 @@ CLASS SalesmanCustomersData:
 
  /*It is used to decide which address is used for primary address which is assigned "YES" value.*/  
     DEFINE VARIABLE lFlag AS LOGICAL NO-UNDO.
-    DEFINE VARIABLE lcShipActive      AS LOGICAL  INITIAL YES. 
+    DEFINE VARIABLE lcShipActive      AS LOGICAL  INITIAL NO. 
      FIND CCSMS WHERE CCSMS.CUST-NUMBER EQ ipcCustNum NO-LOCK NO-ERROR.
      
      IF ipcShipTo <> ? OR ipcShipTo <> "" THEN DO:
-   ASSIGN lcShipActive = NO.
+   ASSIGN lcShipActive = yes.
    END.
     
      //Gama le anadio and SHIP-TO = "" ?                                                                            
@@ -1255,6 +1255,12 @@ CLASS SalesmanCustomersData:
          END. /* IF AVAILABLE CCSMS */   
      IF lcAppType = "mobileuser" THEN 
      DO:
+         MESSAGE "Bug Ship To" skip
+         "ipcShipTo " ipcShipTo skip
+         "ipcCustNum " ipcCustNum skip
+         "lcShipActive " lcShipActive
+         VIEW-AS ALERT-BOX.
+         
          //Gama le anadio el indice, el find y el if not available para el error de TimeComplexity.
          FOR EACH SHPTO WHERE SHPTO.CUST-NUMBER EQ ipcCustNum 
                           AND ((SHPTO.SHIP-NUMBER EQ ipcShipTo AND NOT lcShipActive) OR lcShipActive)
@@ -1310,7 +1316,6 @@ CLASS SalesmanCustomersData:
       END.
       ELSE 
       DO:
-          
           FOR EACH SHPTO WHERE SHPTO.CUST-NUMBER EQ ipcCustNum 
                           AND  ((SHPTO.SHIP-NUMBER EQ ipcShipTo AND NOT lcShipActive) OR lcShipActive)
                           AND (SHPTO.ADDRESS-L1 NE "":U) 
